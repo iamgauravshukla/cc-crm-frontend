@@ -39,7 +39,7 @@ function CreateBooking() {
     adInteracted: '',
   });
 
-  const branches = ['HERA', 'AI SKIN', 'LUMIA', 'GENEVA', 'VENICE', 'DNA MANILA', 'PARIS'];
+  const branches = ['HERA', 'AI SKIN', 'LUMIA', 'GENEVA', 'VENICE', 'DNA MANILA', 'PARIS', 'STA LUCIA', 'FELIZ', 'ESTANCIA'];
   
   const bookingStatuses = [
     'Pencil booking', 'Scheduled', 'At the shop', 'Nearby', 'On the way',

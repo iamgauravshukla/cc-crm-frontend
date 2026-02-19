@@ -34,7 +34,10 @@ function AdPerformance() {
     'LUMIA',
     'PARIS',
     'SM NORTH',
-    'VENICE'
+    'VENICE',
+    'STA LUCIA',
+    'FELIZ',
+    'ESTANCIA'
   ];
 
   useEffect(() => {

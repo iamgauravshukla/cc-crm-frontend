@@ -68,7 +68,10 @@ function OldBookings() {
     'LUMIA',
     'PARIS',
     'SM NORTH',
-    'VENICE'
+    'VENICE',
+    'STA LUCIA',
+    'FELIZ',
+    'ESTANCIA'
   ];
 
   const bookingStatuses = [

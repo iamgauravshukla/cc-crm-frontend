@@ -19,7 +19,10 @@ const BRANCHES = [
   'LUMIA',
   'PARIS',
   'SM NORTH',
-  'VENICE'
+  'VENICE',
+  'STA LUCIA',
+  'FELIZ',
+  'ESTANCIA'
 ];
 
 const DATE_RANGES = [
