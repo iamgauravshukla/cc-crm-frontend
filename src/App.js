@@ -9,6 +9,7 @@ import OldBookings from './pages/OldBookings';
 import Analytics from './pages/Analytics';
 import AgentPerformance from './pages/AgentPerformance';
 import AdPerformance from './pages/AdPerformance';
+import DailyReports from './pages/DailyReports';
 import UsersManagement from './pages/UsersManagement';
 import './App.css';
 
@@ -93,6 +94,11 @@ function App() {
           <Route path="/ad-performance" element={
             <PrivateRoute>
               <AdPerformance />
+            </PrivateRoute>
+          } />
+          <Route path="/daily-reports" element={
+            <PrivateRoute>
+              <DailyReports />
             </PrivateRoute>
           } />
           <Route path="/users-management" element={

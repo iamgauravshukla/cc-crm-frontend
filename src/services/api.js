@@ -49,4 +49,7 @@ export const getBookingById = (id) => api.get(`/bookings/${id}`);
 // Analytics APIs
 export const getAdPerformance = (params) => api.get('/analytics/ad-performance', { params });
 
+// Daily Reports API
+export const getDailyReports = () => api.get('/bookings/daily-reports');
+
 export default api;

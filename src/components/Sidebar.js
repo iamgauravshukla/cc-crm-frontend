@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiCalendar, FiBarChart2, FiLogOut, FiMenu, FiX, FiPlusCircle, FiMoon, FiSun, FiUsers, FiTrendingUp } from 'react-icons/fi';
+import { FiHome, FiCalendar, FiBarChart2, FiLogOut, FiMenu, FiX, FiPlusCircle, FiMoon, FiSun, FiUsers, FiTrendingUp, FiClipboard } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import './Sidebar.css';
 
@@ -28,6 +28,7 @@ function Sidebar() {
     { path: '/create-booking', label: 'Create New Booking', icon: FiPlusCircle, roles: ['Admin', 'Agent'] },
     { path: '/old-bookings', label: 'Master Bookings', icon: FiCalendar, roles: ['Admin', 'Agent'] },
     { path: '/analytics', label: 'Analytics', icon: FiBarChart2, roles: ['Admin'] },
+    { path: '/daily-reports', label: 'Daily Reports', icon: FiClipboard, roles: ['Admin'] },
     { path: '/agent-performance', label: 'Agent Performance', icon: FiUsers, roles: ['Admin'] },
     { path: '/ad-performance', label: 'Ad Performance', icon: FiTrendingUp, roles: ['Admin'] },
     { path: '/users-management', label: 'Users Management', icon: FiUsers, roles: ['Admin'] },
