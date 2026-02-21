@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiDollarSign, FiTrendingUp, FiCalendar, FiBarChart2, FiArrowUp, FiArrowDown, FiUsers, FiAward } from 'react-icons/fi';
+import { FiDollarSign, FiTrendingUp, FiCalendar, FiBarChart2, FiArrowUp, FiArrowDown, FiUsers, FiInfo } from 'react-icons/fi';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import ReactApexChart from 'react-apexcharts';
@@ -18,6 +18,7 @@ const SalesReport = () => {
   const [appliedStartDate, setAppliedStartDate] = useState('');
   const [appliedEndDate, setAppliedEndDate] = useState('');
   const [rangeError, setRangeError] = useState('');
+  const [openTooltipId, setOpenTooltipId] = useState(null);
 
   const fetchSalesReport = useCallback(async () => {
     try {
@@ -99,10 +100,7 @@ const SalesReport = () => {
     return allBranches.sort((a, b) => b.sales - a.sales).slice(0, 5);
   };
 
-  const getTotalBookings = () => {
-    if (!salesData?.monthlySalesAndBookings) return 0;
-    return salesData.monthlySalesAndBookings.reduce((sum, month) => sum + month.bookings, 0);
-  };
+  const getTotalBookings = () => salesData?.totalBookings || 0;
 
   const getAverageSaleValue = () => {
     const total = rangeSales.overall || 0;
@@ -127,12 +125,45 @@ const SalesReport = () => {
   const previousRangeSales = salesData?.previousRangeSales || { overall: 0, byBranch: [] };
   const rangeFirstHalfSales = salesData?.rangeFirstHalfSales || { overall: 0, byBranch: [] };
   const rangeSecondHalfSales = salesData?.rangeSecondHalfSales || { overall: 0, byBranch: [] };
+  const arrivalRateByBranch = salesData?.arrivalRateByBranch || [];
+  const arrivalRateMap = arrivalRateByBranch.reduce((acc, item) => {
+    acc[item.branch] = item;
+    return acc;
+  }, {});
   const dailyTrendData = salesData?.dailySalesAndBookings || [];
   const monthlyTrendData = salesData?.monthlySalesAndBookings || [];
   const rangeDays = appliedStart && appliedEnd
     ? Math.floor((appliedEnd.getTime() - appliedStart.getTime()) / 86400000) + 1
     : 0;
+  const previousRangeDisplay = appliedStart && appliedEnd && rangeDays > 0
+    ? (() => {
+        const previousEnd = new Date(appliedStart.getTime() - 86400000);
+        const previousStart = new Date(previousEnd.getTime() - (rangeDays - 1) * 86400000);
+        return `${formatDate(previousStart)} - ${formatDate(previousEnd)}`;
+      })()
+    : 'Select range';
   const useDailyTrend = rangeDays > 0 && rangeDays <= 31 && dailyTrendData.length > 0;
+  const toggleTooltip = (id) => {
+    setOpenTooltipId((current) => (current === id ? null : id));
+  };
+  const renderInfoTooltip = (id, content) => (
+    <span className="info-tooltip">
+      <button
+        type="button"
+        className="info-btn"
+        aria-label="Info"
+        aria-expanded={openTooltipId === id}
+        onClick={() => toggleTooltip(id)}
+      >
+        <FiInfo />
+      </button>
+      {openTooltipId === id && (
+        <span className="info-popover" role="tooltip">
+          {content}
+        </span>
+      )}
+    </span>
+  );
   const formatShortDate = (dateStr) => {
     const parts = dateStr.split('-');
     if (parts.length !== 3) return dateStr;
@@ -203,7 +234,7 @@ const SalesReport = () => {
     chart: {
       ...getChartTheme().chart,
       type: 'bar',
-      height: 250
+      height: '100%'
     },
     plotOptions: {
       bar: {
@@ -259,7 +290,7 @@ const SalesReport = () => {
     chart: {
       ...getChartTheme().chart,
       type: 'bar',
-      height: 280
+      height: '100%'
     },
     plotOptions: {
       bar: {
@@ -317,7 +348,7 @@ const SalesReport = () => {
     chart: {
       ...getChartTheme().chart,
       type: 'pie',
-      height: 320
+      height: '100%'
     },
     labels: rangeSales.byBranch.map(b => b.branch),
     colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'],
@@ -349,7 +380,7 @@ const SalesReport = () => {
     chart: {
       ...getChartTheme().chart,
       type: 'bar',
-      height: 280
+      height: '100%'
     },
     plotOptions: {
       bar: {
@@ -426,7 +457,7 @@ const SalesReport = () => {
     chart: {
       ...getChartTheme().chart,
       type: 'bar',
-      height: 320
+      height: '100%'
     },
     plotOptions: {
       bar: {
@@ -508,7 +539,7 @@ const SalesReport = () => {
     chart: {
       ...getChartTheme().chart,
       type: 'area',
-      height: 320
+      height: '100%'
     },
     stroke: {
       curve: 'smooth',
@@ -591,7 +622,7 @@ const SalesReport = () => {
           <div className="page-header">
             <div className="header-left">
               <h1>Sales Report</h1>
-              <p className="page-subtitle">Comprehensive sales insights - Only "Arrived & bought" and "Comeback & bought" status | Range: {rangeDisplay}</p>
+              <p className="page-subtitle">Comprehensive sales insights - Sales use "Arrived & bought" and "Comeback & bought". Arrival rate includes "Arrived not potential" | Range: {rangeDisplay}</p>
             </div>
             <div className="header-actions">
                 <button className="current-month-btn" onClick={handleCurrentMonthRange}>
@@ -637,12 +668,20 @@ const SalesReport = () => {
           <>
           {/* Enhanced Summary Cards */}
           <div className="summary-cards">
-            <div className="summary-card daily highlight">
+            <div
+              className="summary-card daily highlight"
+            >
               <div className="card-header">
                 <div className="card-icon">
                   <FiDollarSign />
                 </div>
-                <span className="card-badge">Range</span>
+                <div className="card-header-meta">
+                  <span className="card-badge">Range</span>
+                  {renderInfoTooltip(
+                    'range-sales',
+                    `Range Sales = total sales from all branches within ${rangeDisplay}.`
+                  )}
+                </div>
               </div>
               <div className="card-content">
                 <h3>Range Sales</h3>
@@ -653,12 +692,20 @@ const SalesReport = () => {
               </div>
             </div>
 
-            <div className="summary-card current-month highlight">
+            <div
+              className="summary-card current-month highlight"
+            >
               <div className="card-header">
                 <div className="card-icon">
                   <FiCalendar />
                 </div>
-                <span className="card-badge">Current</span>
+                <div className="card-header-meta">
+                  <span className="card-badge">Current</span>
+                  {renderInfoTooltip(
+                    'current-range',
+                    `Current Range = total sales within ${rangeDisplay}. Growth compares against ${previousRangeDisplay}.`
+                  )}
+                </div>
               </div>
               <div className="card-content">
                 <h3>Current Range</h3>
@@ -672,12 +719,20 @@ const SalesReport = () => {
               </div>
             </div>
 
-            <div className="summary-card last-month">
+            <div
+              className="summary-card last-month"
+            >
               <div className="card-header">
                 <div className="card-icon">
                   <FiBarChart2 />
                 </div>
-                <span className="card-badge">Previous</span>
+                <div className="card-header-meta">
+                  <span className="card-badge">Previous</span>
+                  {renderInfoTooltip(
+                    'previous-range',
+                    `Previous Range = total sales from ${previousRangeDisplay} (same number of days as ${rangeDisplay}).`
+                  )}
+                </div>
               </div>
               <div className="card-content">
                 <h3>Previous Range</h3>
@@ -686,12 +741,20 @@ const SalesReport = () => {
               </div>
             </div>
 
-            <div className="summary-card yearly">
+            <div
+              className="summary-card yearly"
+            >
               <div className="card-header">
                 <div className="card-icon">
                   <FiTrendingUp />
                 </div>
-                <span className="card-badge">Average</span>
+                <div className="card-header-meta">
+                  <span className="card-badge">Average</span>
+                  {renderInfoTooltip(
+                    'avg-sale',
+                    `Avg Sale Value = total range sales divided by total bookings in ${rangeDisplay}.`
+                  )}
+                </div>
               </div>
               <div className="card-content">
                 <h3>Avg Sale Value</h3>
@@ -703,7 +766,9 @@ const SalesReport = () => {
 
           {/* Key Metrics */}
           <div className="key-metrics">
-            <div className="metric-card">
+            <div
+              className="metric-card"
+            >
               <div className="metric-icon">
                 <FiUsers />
               </div>
@@ -711,9 +776,15 @@ const SalesReport = () => {
                 <span className="metric-label">Total Bookings</span>
                 <p className="metric-value">{getTotalBookings().toLocaleString()}</p>
               </div>
+              {renderInfoTooltip(
+                'total-bookings',
+                `Total Bookings = count of bookings (including cancelled) within ${rangeDisplay}.`
+              )}
             </div>
 
-            <div className="metric-card">
+            <div
+              className="metric-card"
+            >
               <div className="metric-icon">
                 <FiBarChart2 />
               </div>
@@ -721,9 +792,15 @@ const SalesReport = () => {
                 <span className="metric-label">Active Branches</span>
                 <p className="metric-value">{getTopBranches().length}</p>
               </div>
+              {renderInfoTooltip(
+                'active-branches',
+                `Active Branches = branches with at least one booking within ${rangeDisplay}.`
+              )}
             </div>
 
-            <div className="metric-card">
+            <div
+              className="metric-card"
+            >
               <div className="metric-icon">
                 <FiTrendingUp />
               </div>
@@ -731,6 +808,10 @@ const SalesReport = () => {
                 <span className="metric-label">Growth Rate</span>
                 <p className="metric-value">{calculateGrowth(rangeSales.overall, previousRangeSales.overall)}%</p>
               </div>
+              {renderInfoTooltip(
+                'growth-rate',
+                `Growth Rate = percentage change between ${rangeDisplay} and ${previousRangeDisplay}.`
+              )}
             </div>
           </div>
 
@@ -748,6 +829,12 @@ const SalesReport = () => {
                     <div className="branch-info">
                       <h4>{branch.branch}</h4>
                       <p className="branch-sales">₱{branch.sales.toLocaleString()}</p>
+                      <p className="branch-arrival-rate">
+                        Arrival rate: {(arrivalRateMap[branch.branch]?.arrivalRate || 0).toFixed(2)}%
+                      </p>
+                      <p className="branch-arrival-count">
+                        Arrivals: {arrivalRateMap[branch.branch]?.arrivals || 0} / {arrivalRateMap[branch.branch]?.bookings || 0}
+                      </p>
                       <div className="branch-percentage">
                         {((branch.sales / rangeSales.overall) * 100).toFixed(1)}% of total
                       </div>
@@ -774,7 +861,7 @@ const SalesReport = () => {
                     options={dailySalesChartOptions}
                     series={dailySalesSeries}
                     type="bar"
-                    height={250}
+                    height="100%"
                   />
                 ) : (
                   <div className="no-data">No sales data for selected range</div>
@@ -803,7 +890,7 @@ const SalesReport = () => {
                   options={halfSalesChartOptions}
                   series={halfSalesSeries}
                   type="bar"
-                  height={280}
+                  height="100%"
                 />
               </div>
             </div>
@@ -820,7 +907,7 @@ const SalesReport = () => {
                     options={currentMonthPieOptions}
                     series={currentMonthPieSeries}
                     type="pie"
-                    height={320}
+                    height="100%"
                   />
                 ) : (
                   <div className="no-data">No sales data for selected range</div>
@@ -839,7 +926,7 @@ const SalesReport = () => {
                   options={{...monthComparisonOptions, xaxis: { ...monthComparisonOptions.xaxis, categories: monthComparisonCategories }}}
                   series={monthComparisonSeries}
                   type="bar"
-                  height={280}
+                  height="100%"
                 />
               </div>
             </div>
@@ -855,7 +942,7 @@ const SalesReport = () => {
                   options={yearlyChartOptions}
                   series={yearlySeries}
                   type="bar"
-                  height={320}
+                  height="100%"
                 />
               </div>
             </div>
@@ -871,7 +958,7 @@ const SalesReport = () => {
                   options={monthlyTrendOptions}
                   series={monthlyTrendSeries}
                   type="area"
-                  height={320}
+                  height="100%"
                 />
               </div>
             </div>

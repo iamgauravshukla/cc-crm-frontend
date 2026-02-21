@@ -262,6 +262,12 @@
   gap: 12px;
 }
 
+.sales-report-page .card-header-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .sales-report-page .summary-card .card-badge {
   font-size: 11px;
   font-weight: 600;
@@ -380,6 +386,57 @@
   gap: 12px;
   border: 1px solid var(--border-color);
   transition: all 0.3s ease;
+}
+
+.sales-report-page .metric-card .info-tooltip {
+  margin-left: auto;
+}
+
+.sales-report-page .info-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.sales-report-page .info-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sales-report-page .info-btn:hover {
+  color: var(--text-primary);
+  border-color: #3b82f6;
+}
+
+.sales-report-page .info-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sales-report-page .info-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+  z-index: 20;
 }
 
 .sales-report-page .metric-card:hover {
@@ -502,6 +559,19 @@
   margin: 0 0 4px 0;
 }
 
+.sales-report-page .branch-arrival-rate {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.sales-report-page .branch-arrival-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 0 0 6px 0;
+}
+
 .sales-report-page .branch-percentage {
   font-size: 11px;
   color: var(--text-secondary);
@@ -524,6 +594,8 @@
   padding: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
 }
 
 .sales-report-page .chart-card.full-width {
@@ -548,6 +620,14 @@
 
 .sales-report-page .chart-content {
   position: relative;
+  flex: 0 0 auto;
+  min-height: 260px;
+}
+
+.sales-report-page .chart-content .apexcharts-canvas,
+.sales-report-page .chart-content .apexcharts-inner,
+.sales-report-page .chart-content .apexcharts-svg {
+  height: auto !important;
 }
 
 .sales-report-page .no-data {
