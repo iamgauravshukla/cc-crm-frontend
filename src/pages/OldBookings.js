@@ -452,7 +452,7 @@ function OldBookings() {
                       <th>Treatment Area</th>
                       <th>Freebie</th>
                       <th>Companion Treatment</th>
-                      <th>Price</th>
+                      {user?.role !== 'Agent' && <th>Price</th>}
                       <th>Payment Mode</th>
                       <th>Phone</th>
                       <th>Instagram</th>
@@ -479,7 +479,20 @@ function OldBookings() {
                             <FiEdit2 size={16} />
                           </button>
                         </td>
-                        <td>{booking.date || '-'}</td>
+                        <td>
+                          <div style={{whiteSpace: 'nowrap'}}>
+                            {booking.date ? (
+                              <>
+                                <div style={{fontSize: '14px', fontWeight: '600'}}>
+                                  {booking.date.split(' ').slice(0, 3).join(' ')}
+                                </div>
+                                <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px'}}>
+                                  {booking.date.split(' ').slice(3).join(' ')}
+                                </div>
+                              </>
+                            ) : '-'}
+                          </div>
+                        </td>
                         <td>{booking.branch || '-'}</td>
                         <td>
                           <span className={getStatusClass(booking.status)}>
@@ -494,7 +507,7 @@ function OldBookings() {
                         <td>{booking.area || '-'}</td>
                         <td>{booking.freebie || '-'}</td>
                         <td>{booking.companionTreatment || '-'}</td>
-                        <td><strong>₱{typeof booking.totalPrice === 'number' ? booking.totalPrice.toFixed(2) : (parseFloat(booking.totalPrice) || 0).toFixed(2)}</strong></td>
+                        {user?.role !== 'Agent' && <td><strong>₱{typeof booking.totalPrice === 'number' ? booking.totalPrice.toFixed(2) : (parseFloat(booking.totalPrice) || 0).toFixed(2)}</strong></td>}
                         <td>{booking.paymentMode || '-'}</td>
                         <td>{booking.phone || '-'}</td>
                         <td>{booking.socialMedia || '-'}</td>
@@ -582,10 +595,12 @@ function OldBookings() {
                       <div className="card-section">
                         <h4>Payment</h4>
                         <div className="card-info-grid">
-                          <div className="card-info-item">
-                            <span className="label">Total Price:</span>
-                            <span className="value price">₱{typeof booking.totalPrice === 'number' ? booking.totalPrice.toFixed(2) : (parseFloat(booking.totalPrice) || 0).toFixed(2)}</span>
-                          </div>
+                          {user?.role !== 'Agent' && (
+                            <div className="card-info-item">
+                              <span className="label">Total Price:</span>
+                              <span className="value price">₱{typeof booking.totalPrice === 'number' ? booking.totalPrice.toFixed(2) : (parseFloat(booking.totalPrice) || 0).toFixed(2)}</span>
+                            </div>
+                          )}
                           <div className="card-info-item">
                             <span className="label">Payment Mode:</span>
                             <span className="value">{booking.paymentMode || '-'}</span>
@@ -810,18 +825,20 @@ function OldBookings() {
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label>Total Price *</label>
-                    <input
-                      type="number"
-                      name="totalPrice"
-                      value={editFormData.totalPrice}
-                      onChange={handleEditFormChange}
-                      required
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
+                  {user?.role !== 'Agent' && (
+                    <div className="form-group">
+                      <label>Total Price *</label>
+                      <input
+                        type="number"
+                        name="totalPrice"
+                        value={editFormData.totalPrice}
+                        onChange={handleEditFormChange}
+                        required
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                  )}
 
                   <div className="form-group">
                     <label>Payment Mode *</label>

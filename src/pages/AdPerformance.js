@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import ReactApexChart from 'react-apexcharts';
+import { useTheme } from '../context/ThemeContext';
 import { getAdPerformance } from '../services/api';
 import { FiCalendar, FiFilter } from 'react-icons/fi';
 
@@ -21,6 +22,10 @@ function AdPerformance() {
   const [selectedBranch, setSelectedBranch] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const itemsPerPage = 50;
+  
+  // Use theme context for reactive theme detection
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
 
   const branches = [
     'All',
@@ -153,9 +158,14 @@ function AdPerformance() {
 
   // Chart configurations
   const bookingsChartOptions = {
+    theme: {
+      mode: isDarkMode ? 'dark' : 'light'
+    },
     chart: {
       type: 'bar',
-      toolbar: { show: false }
+      toolbar: { show: false },
+      foreColor: isDarkMode ? '#cbd5e1' : '#64748b',
+      background: 'transparent'
     },
     plotOptions: {
       bar: {
@@ -164,26 +174,51 @@ function AdPerformance() {
         borderRadius: 8
       }
     },
-    dataLabels: { enabled: false },
+    dataLabels: { 
+      enabled: false,
+      style: {
+        colors: [isDarkMode ? '#f1f5f9' : '#1f2937']
+      }
+    },
     stroke: { show: false },
     xaxis: {
       categories: sortedAds.slice(0, 10).map(ad => ad.adName),
       labels: {
         rotate: -45,
         trim: true,
-        maxHeight: 100
+        maxHeight: 100,
+        style: {
+          colors: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
       }
     },
     yaxis: {
-      title: { text: 'Bookings' }
+      title: { 
+        text: 'Bookings',
+        style: {
+          color: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      },
+      labels: {
+        style: {
+          colors: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      }
     },
     fill: { opacity: 1 },
     colors: ['#2563EB', '#10b981'],
     legend: {
       position: 'top',
-      horizontalAlign: 'right'
+      horizontalAlign: 'right',
+      labels: {
+        colors: isDarkMode ? '#cbd5e1' : '#64748b'
+      }
+    },
+    grid: {
+      borderColor: isDarkMode ? '#334155' : '#e5e7eb'
     },
     tooltip: {
+      theme: isDarkMode ? 'dark' : 'light',
       y: {
         formatter: (val) => val.toFixed(0)
       }

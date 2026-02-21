@@ -10,6 +10,7 @@ import Analytics from './pages/Analytics';
 import AgentPerformance from './pages/AgentPerformance';
 import AdPerformance from './pages/AdPerformance';
 import DailyReports from './pages/DailyReports';
+import SalesReport from './pages/SalesReport';
 import UsersManagement from './pages/UsersManagement';
 import './App.css';
 
@@ -99,6 +100,11 @@ function App() {
           <Route path="/daily-reports" element={
             <PrivateRoute>
               <DailyReports />
+            </PrivateRoute>
+          } />
+          <Route path="/sales-report" element={
+            <PrivateRoute>
+              <SalesReport />
             </PrivateRoute>
           } />
           <Route path="/users-management" element={

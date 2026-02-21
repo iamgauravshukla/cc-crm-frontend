@@ -11,6 +11,8 @@
   width: 260px;
   z-index: 1000;
   box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .sidebar.collapsed {
@@ -62,14 +64,15 @@
   flex: 1;
   padding: 20px 0;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 20px;
-  margin: 4px 12px;
+  padding: 10px 20px;
+  margin: 4px;
   border-radius: 10px;
   background: transparent;
   border: none;
@@ -182,18 +185,91 @@
   display: none;
 }
 
+/* Mobile menu toggle button - fixed in top right corner */
+.mobile-menu-toggle {
+  display: none;
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1001;
+  background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+  border: none;
+  color: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.mobile-menu-toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.mobile-menu-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Desktop behavior */
+@media (min-width: 1025px) {
+  .mobile-menu-toggle {
+    display: none;
+  }
+
+  .sidebar-toggle.desktop-only {
+    display: flex;
+  }
+
+  /* On desktop, collapsed means icon-only sidebar */
+  .sidebar.collapsed {
+    width: 70px;
+    transform: translateX(0);
+  }
+}
+
 /* Mobile responsive */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+  /* Show mobile menu toggle button on tablet and mobile */
+  .mobile-menu-toggle {
+    display: flex;
+  }
+
+  /* Hide desktop toggle button on mobile/tablet */
+  .sidebar-toggle.desktop-only {
+    display: none;
+  }
+
+  /* Sidebar behavior on mobile/tablet */
   .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 260px;
+    z-index: 1000;
     transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .sidebar:not(.collapsed) {
     transform: translateX(0);
   }
 
-  .sidebar-overlay {
+  .sidebar.collapsed {
+    width: 260px;
+    transform: translateX(-100%);
+  }
+
+  /* Show overlay when sidebar is open */
+  .sidebar:not(.collapsed) ~ .sidebar-overlay {
     display: block;
+  }
+
+  .sidebar-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -202,9 +278,23 @@
     background: rgba(0, 0, 0, 0.5);
     z-index: 999;
   }
+}
 
-  .sidebar.collapsed ~ .sidebar-overlay {
-    display: none;
+@media (max-width: 768px) {
+  .sidebar {
+    width: 280px;
+    max-width: 85vw;
+  }
+
+  .sidebar.collapsed {
+    width: 280px;
+  }
+
+  .mobile-menu-toggle {
+    top: 15px;
+    right: 15px;
+    width: 46px;
+    height: 46px;
   }
 }
 

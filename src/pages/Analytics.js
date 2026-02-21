@@ -4,6 +4,7 @@ import api from '../services/api';
 import Chart from 'react-apexcharts';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
+import { useTheme } from '../context/ThemeContext';
 import { FiTrendingUp, FiDollarSign, FiBarChart2, FiUsers, FiRepeat, FiHome, FiPackage, FiCreditCard, FiUserCheck, FiPieChart, FiCalendar, FiTarget } from 'react-icons/fi';
 import './Analytics.css';
 
@@ -43,9 +44,10 @@ function Analytics() {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  // Detect dark mode
-  const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+  
+  // Use theme context for reactive theme detection
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
 
   // Common chart theme config
   const getChartTheme = () => ({

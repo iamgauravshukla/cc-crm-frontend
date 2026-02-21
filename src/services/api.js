@@ -48,8 +48,15 @@ export const getBookingById = (id) => api.get(`/bookings/${id}`);
 
 // Analytics APIs
 export const getAdPerformance = (params) => api.get('/analytics/ad-performance', { params });
+export const getSalesReport = (params = {}) => api.get('/analytics/sales-report', { params });
 
 // Daily Reports API
 export const getDailyReports = () => api.get('/bookings/daily-reports');
+export const getOTSBookings = () => api.get('/bookings/daily-reports/ots');
+export const getOverallBookings = () => api.get('/bookings/daily-reports/overall');
+export const getTomorrowBookings = () => api.get('/bookings/daily-reports/tomorrow');
+export const getNext7DaysBookings = () => api.get('/bookings/daily-reports/next7days');
+export const getCancellations = () => api.get('/bookings/daily-reports/cancellations');
+export const getTomorrowSummary = () => api.get('/bookings/daily-reports/tomorrow-summary');
 
 export default api;

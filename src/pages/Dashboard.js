@@ -4,6 +4,7 @@ import Chart from 'react-apexcharts';
 import api from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
+import { useTheme } from '../context/ThemeContext';
 import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiShoppingBag, FiPercent, FiAward, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
 
 function Dashboard({ onLogout }) {
@@ -12,6 +13,10 @@ function Dashboard({ onLogout }) {
   const [trendData, setTrendData] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  
+  // Use theme context for reactive theme detection
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
 
   const fetchDashboardData = async () => {
     try {
@@ -88,7 +93,16 @@ function Dashboard({ onLogout }) {
 
   // Trend chart options
   const trendChartOptions = trendData ? {
-    chart: { type: 'area', toolbar: { show: true }, zoom: { enabled: false } },
+    theme: {
+      mode: isDarkMode ? 'dark' : 'light'
+    },
+    chart: { 
+      type: 'area', 
+      toolbar: { show: true }, 
+      zoom: { enabled: false },
+      foreColor: isDarkMode ? '#cbd5e1' : '#64748b',
+      background: 'transparent'
+    },
     colors: ['#2563EB'],
     stroke: { curve: 'smooth', width: 3 },
     fill: { 
@@ -99,19 +113,49 @@ function Dashboard({ onLogout }) {
         stops: [0, 90, 100]
       } 
     },
-    dataLabels: { enabled: false },
+    dataLabels: { 
+      enabled: false,
+      style: {
+        colors: [isDarkMode ? '#f1f5f9' : '#1f2937']
+      }
+    },
     xaxis: { 
       categories: trendData.dates,
-      labels: { rotate: -45, style: { fontSize: '11px' } }
+      labels: { 
+        rotate: -45, 
+        style: { 
+          fontSize: '11px',
+          colors: isDarkMode ? '#cbd5e1' : '#64748b'
+        } 
+      }
     },
     yaxis: { 
-      title: { text: 'Bookings' },
-      labels: { formatter: (val) => Math.round(val) }
+      title: { 
+        text: 'Bookings',
+        style: {
+          color: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      },
+      labels: { 
+        formatter: (val) => Math.round(val),
+        style: {
+          colors: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      }
     },
-    grid: { strokeDashArray: 4 },
+    grid: { 
+      strokeDashArray: 4,
+      borderColor: isDarkMode ? '#334155' : '#e5e7eb'
+    },
     tooltip: {
+      theme: isDarkMode ? 'dark' : 'light',
       x: { format: 'dd MMM' },
       y: { formatter: (val) => `${val} bookings` }
+    },
+    legend: {
+      labels: {
+        colors: isDarkMode ? '#cbd5e1' : '#64748b'
+      }
     }
   } : {};
 

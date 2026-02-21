@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiCalendar, FiBarChart2, FiLogOut, FiMenu, FiX, FiPlusCircle, FiMoon, FiSun, FiUsers, FiTrendingUp, FiClipboard } from 'react-icons/fi';
+import { FiHome, FiCalendar, FiBarChart2, FiLogOut, FiMenu, FiX, FiPlusCircle, FiMoon, FiSun, FiUsers, FiTrendingUp, FiClipboard, FiDollarSign } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import './Sidebar.css';
 
@@ -13,6 +13,24 @@ function Sidebar() {
     const storedUser = localStorage.getItem('user');
     return storedUser ? JSON.parse(storedUser) : null;
   });
+
+  // Set initial collapsed state based on screen size
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 1024) {
+        setIsCollapsed(true); // Collapsed (hidden) on mobile/tablet
+      } else {
+        setIsCollapsed(false); // Expanded on desktop
+      }
+    };
+
+    // Set initial state
+    handleResize();
+
+    // Add resize listener
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Update body class when sidebar collapses/expands
   useEffect(() => {
@@ -29,6 +47,7 @@ function Sidebar() {
     { path: '/old-bookings', label: 'Master Bookings', icon: FiCalendar, roles: ['Admin', 'Agent'] },
     { path: '/analytics', label: 'Analytics', icon: FiBarChart2, roles: ['Admin'] },
     { path: '/daily-reports', label: 'Daily Reports', icon: FiClipboard, roles: ['Admin'] },
+    { path: '/sales-report', label: 'Sales Report', icon: FiDollarSign, roles: ['Admin'] },
     { path: '/agent-performance', label: 'Agent Performance', icon: FiUsers, roles: ['Admin'] },
     { path: '/ad-performance', label: 'Ad Performance', icon: FiTrendingUp, roles: ['Admin'] },
     { path: '/users-management', label: 'Users Management', icon: FiUsers, roles: ['Admin'] },
@@ -49,13 +68,22 @@ function Sidebar() {
 
   return (
     <>
+      {/* Mobile menu toggle button - always visible on mobile/tablet */}
+      <button 
+        className="mobile-menu-toggle"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        aria-label="Toggle menu"
+      >
+        {isCollapsed ? <FiMenu size={24} /> : <FiX size={24} />}
+      </button>
+
       <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
             {!isCollapsed && <span className="logo-text">Ageless</span>}
           </div>
           <button 
-            className="sidebar-toggle"
+            className="sidebar-toggle desktop-only"
             onClick={() => setIsCollapsed(!isCollapsed)}
             aria-label="Toggle sidebar"
           >

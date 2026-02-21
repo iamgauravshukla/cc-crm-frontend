@@ -3,6 +3,7 @@ import Chart from 'react-apexcharts';
 import api from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
+import { useTheme } from '../context/ThemeContext';
 import { FiTrendingUp, FiDollarSign, FiUsers, FiAward, FiPercent, FiTarget, FiBarChart2, FiCalendar } from 'react-icons/fi';
 
 function AgentPerformance() {
@@ -13,6 +14,10 @@ function AgentPerformance() {
   const [customEndDate, setCustomEndDate] = useState('');
   const [sortBy, setSortBy] = useState('revenue');
   const [sortOrder, setSortOrder] = useState('desc');
+  
+  // Use theme context for reactive theme detection
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
 
   const fetchPerformanceData = useCallback(async () => {
     // Don't fetch if custom date range is selected but dates aren't both filled
@@ -73,7 +78,15 @@ function AgentPerformance() {
   };
 
   const comparisonChartOptions = performanceData ? {
-    chart: { type: 'bar', toolbar: { show: true } },
+    theme: {
+      mode: isDarkMode ? 'dark' : 'light'
+    },
+    chart: { 
+      type: 'bar', 
+      toolbar: { show: true },
+      foreColor: isDarkMode ? '#cbd5e1' : '#64748b',
+      background: 'transparent'
+    },
     plotOptions: {
       bar: {
         horizontal: false,
@@ -81,17 +94,38 @@ function AgentPerformance() {
         endingShape: 'rounded'
       },
     },
-    dataLabels: { enabled: false },
+    dataLabels: { 
+      enabled: false,
+      style: {
+        colors: [isDarkMode ? '#f1f5f9' : '#1f2937']
+      }
+    },
     stroke: { show: true, width: 2, colors: ['transparent'] },
     xaxis: {
       categories: performanceData.agents.map(a => a.name),
-      labels: { rotate: -45 }
+      labels: { 
+        rotate: -45,
+        style: {
+          colors: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      }
     },
     yaxis: {
-      title: { text: 'Bookings & Revenue' }
+      title: { 
+        text: 'Bookings & Revenue',
+        style: {
+          color: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      },
+      labels: {
+        style: {
+          colors: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      }
     },
     fill: { opacity: 1 },
     tooltip: {
+      theme: isDarkMode ? 'dark' : 'light',
       y: {
         formatter: function (val, opts) {
           if (opts.seriesIndex === 1) {
@@ -102,7 +136,15 @@ function AgentPerformance() {
       }
     },
     colors: ['#2563EB', '#10B981'],
-    legend: { position: 'top' }
+    legend: { 
+      position: 'top',
+      labels: {
+        colors: isDarkMode ? '#cbd5e1' : '#64748b'
+      }
+    },
+    grid: {
+      borderColor: isDarkMode ? '#334155' : '#e5e7eb'
+    }
   } : {};
 
   const comparisonChartSeries = performanceData ? [
@@ -117,7 +159,15 @@ function AgentPerformance() {
   ] : [];
 
   const conversionChartOptions = performanceData ? {
-    chart: { type: 'bar', toolbar: { show: false } },
+    theme: {
+      mode: isDarkMode ? 'dark' : 'light'
+    },
+    chart: { 
+      type: 'bar', 
+      toolbar: { show: false },
+      foreColor: isDarkMode ? '#cbd5e1' : '#64748b',
+      background: 'transparent'
+    },
     plotOptions: {
       bar: {
         horizontal: true,
@@ -130,14 +180,39 @@ function AgentPerformance() {
         return val.toFixed(1) + '%';
       },
       offsetX: -6,
-      style: { fontSize: '12px', colors: ['#fff'] }
+      style: { 
+        fontSize: '12px', 
+        colors: ['#fff'] 
+      }
     },
     xaxis: {
       categories: performanceData.agents.map(a => a.name),
-      max: 100
+      max: 100,
+      labels: {
+        style: {
+          colors: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          colors: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      }
     },
     colors: ['#8B5CF6'],
-    grid: { borderColor: '#e7e7e7' }
+    grid: { 
+      borderColor: isDarkMode ? '#334155' : '#e5e7eb'
+    },
+    tooltip: {
+      theme: isDarkMode ? 'dark' : 'light'
+    },
+    legend: {
+      labels: {
+        colors: isDarkMode ? '#cbd5e1' : '#64748b'
+      }
+    }
   } : {};
 
   const conversionChartSeries = performanceData ? [{

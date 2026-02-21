@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 /* CSS Variables for Theming */
 :root[data-theme="light"] {
   /* Background Colors */
@@ -98,12 +103,29 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+  width: 100%;
+  position: relative;
+}
+
+/* Global select and option styling for theme support */
+select {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
+  border-color: var(--input-border);
+}
+
+select option {
+  background-color: var(--input-bg);
+  color: var(--text-primary);
 }
 
 /* Main Layout with Sidebar */
 .app-layout {
   display: flex;
   min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .main-content {
@@ -111,15 +133,19 @@ body {
   margin-left: 260px;
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 100vh;
+  width: calc(100% - 260px);
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body.sidebar-collapsed .main-content {
   margin-left: 70px;
+  width: calc(100% - 70px);
 }
 
 .page-container {
   padding: 30px;
-  max-width: 1400px;
+  /* max-width: 1400px; */
   margin: 0 auto;
 }
 
@@ -132,17 +158,33 @@ body.sidebar-collapsed .main-content {
   border-bottom: 2px solid #2563EB;
 }
 
-@media (max-width: 768px) {
+/* Tablet responsive */
+@media (max-width: 1024px) {
   .main-content {
     margin-left: 0;
+    width: 100%;
+    max-width: 100%;
   }
   
   body.sidebar-collapsed .main-content {
     margin-left: 0;
+    width: 100%;
   }
   
   .page-container {
+    padding: 24px;
+    max-width: 100%;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .page-container {
     padding: 20px;
+  }
+
+  .page-container h2 {
+    font-size: 24px;
   }
 }
 
@@ -1234,7 +1276,7 @@ body.sidebar-collapsed .main-content {
 
 .filter-select {
   padding: 12px 20px;
-  border: 2px solid #e9ecef;
+  border: 2px solid var(--input-border);
   border-radius: 8px;
   font-size: 14px;
   background-color: var(--input-bg);
@@ -1248,6 +1290,12 @@ body.sidebar-collapsed .main-content {
 .filter-select:focus {
   outline: none;
   border-color: #2563EB;
+}
+
+.filter-select option {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  padding: 8px;
 }
 
 .sort-button {
@@ -3454,11 +3502,6 @@ body.sidebar-collapsed .main-content {
   color: white;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(220, 38, 38, 0.3);
-}
-
-/* User Management Modals */
-.modal-content {
-  max-width: 500px;
 }
 
 .modal-danger {
