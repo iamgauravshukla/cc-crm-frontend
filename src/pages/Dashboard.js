@@ -21,7 +21,10 @@ function Dashboard({ onLogout }) {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/dashboard/overview');
+      // Add cache-busting parameter to force fresh data
+      const response = await api.get('/dashboard/overview', {
+        params: { t: Date.now() }
+      });
       if (response.data.success) {
         setDashboardData(response.data.data);
       }
@@ -34,7 +37,10 @@ function Dashboard({ onLogout }) {
 
   const fetchTrendData = async () => {
     try {
-      const response = await api.get('/dashboard/trend?days=20');
+      // Add cache-busting parameter to force fresh data
+      const response = await api.get('/dashboard/trend', {
+        params: { days: 20, t: Date.now() }
+      });
       if (response.data.success) {
         setTrendData(response.data.data);
       }
@@ -50,6 +56,19 @@ function Dashboard({ onLogout }) {
     }
     fetchDashboardData();
     fetchTrendData();
+
+    // Refetch data when the page becomes visible (user returns from another tab/page)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDashboardData();
+        fetchTrendData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const handleCardClick = (path) => {
@@ -319,7 +338,28 @@ function Dashboard({ onLogout }) {
 
             {/* Today's Bookings Table */}
             <div className="todays-bookings-section">
-              <h2>📅 Today's Bookings ({dashboardData.todayBookings.length})</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h2 style={{ margin: 0 }}>📅 Today's Bookings ({dashboardData.todayBookings.length})</h2>
+                <button
+                  onClick={fetchDashboardData}
+                  disabled={loading}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    opacity: loading ? 0.6 : 1,
+                    transition: 'opacity 0.3s'
+                  }}
+                  title="Refresh dashboard data"
+                >
+                  {loading ? '⟳ Refreshing...' : '⟳ Refresh'}
+                </button>
+              </div>
               {dashboardData.todayBookings.length > 0 ? (
                 <div className="table-container">
                   <table className="bookings-table">
@@ -338,6 +378,7 @@ function Dashboard({ onLogout }) {
                         <th>Treatment Area</th>
                         <th>Freebie</th>
                         <th>Companion</th>
+                        <th>Companion Phone</th>
                         <th>Companion Age</th>
                         <th>Companion Gender</th>
                         <th>Companion Treatment</th>
@@ -368,6 +409,7 @@ function Dashboard({ onLogout }) {
                           <td>{booking.area || '-'}</td>
                           <td>{booking.freebie || '-'}</td>
                           <td>{booking.companionName || '-'}</td>
+                          <td>{booking.companionPhone || '-'}</td>
                           <td>{booking.companionAge || '-'}</td>
                           <td>{booking.companionGender || '-'}</td>
                           <td>{booking.companionTreatment || '-'}</td>
@@ -385,7 +427,7 @@ function Dashboard({ onLogout }) {
                           <td>{booking.matchReason || '-'}</td>
                           <td>{booking.matchedSource || '-'}</td>
                         </tr>
-                      ))}
+                      ))}}
                     </tbody>
                   </table>
                 </div>

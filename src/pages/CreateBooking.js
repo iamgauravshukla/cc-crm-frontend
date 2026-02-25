@@ -333,8 +333,6 @@ function CreateBooking() {
                       value={formData.agent} 
                       onChange={handleChange} 
                       required
-                      disabled={user?.role !== 'Admin'}
-                      title={user?.role !== 'Admin' ? 'You can only create bookings for yourself' : ''}
                     >
                       <option value="">Select Agent</option>
                       {agents.map(agent => (

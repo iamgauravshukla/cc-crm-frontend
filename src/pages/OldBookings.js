@@ -913,7 +913,14 @@ function OldBookings() {
 
                   <div className="form-group">
                     <label>Agent *</label>
-                    <select name="agent" value={editFormData.agent} onChange={handleEditFormChange} required>
+                    <select 
+                      name="agent" 
+                      value={editFormData.agent} 
+                      onChange={handleEditFormChange} 
+                      required
+                      disabled={user?.role !== 'Admin'}
+                      title={user?.role !== 'Admin' ? 'Agents cannot change the assigned agent' : ''}
+                    >
                       <option value="">Select Agent</option>
                       {agents.map(agent => (
                         <option key={agent} value={agent}>{agent}</option>
