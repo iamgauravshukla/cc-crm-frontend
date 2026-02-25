@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBooking } from '../services/api';
 import Sidebar from '../components/Sidebar';
@@ -10,6 +10,7 @@ function CreateBooking() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [user, setUser] = useState(null);
 
   const [formData, setFormData] = useState({
     branch: '',
@@ -38,6 +39,20 @@ function CreateBooking() {
     agent: '',
     adInteracted: '',
   });
+
+  // Get current user from localStorage and auto-fill agent field if user is an agent
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    setUser(userData);
+    
+    // If agent, auto-fill the agent field with current user's name
+    if (userData?.role !== 'Admin' && userData?.name) {
+      setFormData(prev => ({
+        ...prev,
+        agent: userData.name
+      }));
+    }
+  }, []);
 
   const branches = ['HERA', 'AI SKIN', 'LUMIA', 'GENEVA', 'VENICE', 'DNA MANILA', 'PARIS', 'STA LUCIA', 'FELIZ', 'ESTANCIA'];
   
@@ -136,7 +151,14 @@ function CreateBooking() {
 
                   <div className="form-group">
                     <label>Booking Status <span className="required">*</span></label>
-                    <select name="status" value={formData.status} onChange={handleChange} required>
+                    <select 
+                      name="status" 
+                      value={formData.status} 
+                      onChange={handleChange} 
+                      required
+                      disabled={user?.role !== 'Admin'}
+                      title={user?.role !== 'Admin' ? 'Agents cannot modify booking status' : ''}
+                    >
                       {bookingStatuses.map(status => (
                         <option key={status} value={status}>{status}</option>
                       ))}
@@ -204,11 +226,11 @@ function CreateBooking() {
                   <div className="form-group">
                     <label>Email</label>
                     <input
-                      type="email"
+                      type="text"
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      placeholder="Enter email address (optional)"
+                      placeholder="Enter email address or note if not provided (optional)"
                     />
                   </div>
 
@@ -252,7 +274,16 @@ function CreateBooking() {
                       ))}
                     </select>
                   </div>
+                </div>
+              </div>
 
+              {/* Date & Time Section */}
+              <div className="form-section">
+                <div className="section-header">
+                  <FiCalendar className="section-icon" />
+                  <h3>Appointment Date & Time</h3>
+                </div>
+                <div className="form-grid">
                   <div className="form-group">
                     <label>Date <span className="required">*</span></label>
                     <input
@@ -274,7 +305,16 @@ function CreateBooking() {
                       required
                     />
                   </div>
+                </div>
+              </div>
 
+              {/* Customer Information Section */}
+              <div className="form-section">
+                <div className="section-header">
+                  <FiFileText className="section-icon" />
+                  <h3>Additional Information</h3>
+                </div>
+                <div className="form-grid">
                   <div className="form-group">
                     <label>Freebie</label>
                     <input
@@ -288,7 +328,14 @@ function CreateBooking() {
 
                   <div className="form-group">
                     <label>Agent <span className="required">*</span></label>
-                    <select name="agent" value={formData.agent} onChange={handleChange} required>
+                    <select 
+                      name="agent" 
+                      value={formData.agent} 
+                      onChange={handleChange} 
+                      required
+                      disabled={user?.role !== 'Admin'}
+                      title={user?.role !== 'Admin' ? 'You can only create bookings for yourself' : ''}
+                    >
                       <option value="">Select Agent</option>
                       {agents.map(agent => (
                         <option key={agent} value={agent}>{agent}</option>

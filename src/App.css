@@ -2270,6 +2270,17 @@ body.sidebar-collapsed .main-content {
   padding: 25px;
 }
 
+.analytics-grid-single {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  margin-bottom: 30px;
+}
+
+.analytics-grid-single .analytics-card {
+  width: 100%;
+}
+
 .bookings-section {
   background: var(--card-bg);
   padding: 25px;

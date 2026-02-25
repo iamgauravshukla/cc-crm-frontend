@@ -217,7 +217,69 @@ function AgentPerformance() {
 
   const conversionChartSeries = performanceData ? [{
     name: 'Conversion Rate',
-    data: performanceData.agents.map(a => a.conversionRate)
+    data: performanceData.agents.map(a => a.conversionRate ?? 0)
+  }] : [];
+
+  const arrivalChartOptions = performanceData ? {
+    theme: {
+      mode: isDarkMode ? 'dark' : 'light'
+    },
+    chart: { 
+      type: 'bar', 
+      toolbar: { show: false },
+      foreColor: isDarkMode ? '#cbd5e1' : '#64748b',
+      background: 'transparent'
+    },
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        dataLabels: { position: 'top' }
+      }
+    },
+    dataLabels: {
+      enabled: true,
+      formatter: function (val) {
+        return val.toFixed(1) + '%';
+      },
+      offsetX: -6,
+      style: { 
+        fontSize: '12px', 
+        colors: ['#fff'] 
+      }
+    },
+    xaxis: {
+      categories: performanceData.agents.map(a => a.name),
+      max: 100,
+      labels: {
+        style: {
+          colors: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          colors: isDarkMode ? '#cbd5e1' : '#64748b'
+        }
+      }
+    },
+    colors: ['#10B981'],
+    grid: { 
+      borderColor: isDarkMode ? '#334155' : '#e5e7eb'
+    },
+    tooltip: {
+      theme: isDarkMode ? 'dark' : 'light'
+    },
+    legend: {
+      labels: {
+        colors: isDarkMode ? '#cbd5e1' : '#64748b'
+      }
+    }
+  } : {};
+
+  const arrivalChartSeries = performanceData ? [{
+    name: 'Arrival Rate',
+    data: performanceData.agents.map(a => a.arrivalRate ?? 0)
   }] : [];
 
   return (
@@ -322,7 +384,7 @@ function AgentPerformance() {
               </div>
 
               {/* Comparison Charts */}
-              <div className="analytics-grid">
+              <div className="analytics-grid-single">
                 <div className="analytics-card">
                   <div className="analytics-card-header">
                     <h3><FiTrendingUp /> Bookings & Revenue Comparison</h3>
@@ -352,6 +414,21 @@ function AgentPerformance() {
                     />
                   </div>
                 </div>
+
+                <div className="analytics-card">
+                  <div className="analytics-card-header">
+                    <h3><FiTarget /> Arrival Rate by Agent</h3>
+                    <p>Percentage of customers who arrived from bookings</p>
+                  </div>
+                  <div className="analytics-card-body">
+                    <Chart
+                      options={arrivalChartOptions}
+                      series={arrivalChartSeries}
+                      type="bar"
+                      height={350}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Detailed Performance Table */}
@@ -375,6 +452,9 @@ function AgentPerformance() {
                         <th onClick={() => handleSort('conversionRate')} style={{ cursor: 'pointer' }}>
                           Conversion % {sortBy === 'conversionRate' && (sortOrder === 'desc' ? '↓' : '↑')}
                         </th>
+                        <th onClick={() => handleSort('arrivalRate')} style={{ cursor: 'pointer' }}>
+                          Arrival Rate % {sortBy === 'arrivalRate' && (sortOrder === 'desc' ? '↓' : '↑')}
+                        </th>
                         <th onClick={() => handleSort('converted')} style={{ cursor: 'pointer' }}>
                           Converted {sortBy === 'converted' && (sortOrder === 'desc' ? '↓' : '↑')}
                         </th>
@@ -395,7 +475,12 @@ function AgentPerformance() {
                           <td>₱{agent.avgBookingValue.toLocaleString()}</td>
                           <td>
                             <span className={`conversion-badge ${agent.conversionRate >= 50 ? 'high' : agent.conversionRate >= 30 ? 'medium' : 'low'}`}>
-                              {agent.conversionRate.toFixed(1)}%
+                              {(agent.conversionRate ?? 0).toFixed(1)}%
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`arrival-badge ${agent.arrivalRate >= 50 ? 'high' : agent.arrivalRate >= 30 ? 'medium' : 'low'}`}>
+                              {(agent.arrivalRate ?? 0).toFixed(1)}%
                             </span>
                           </td>
                           <td>{agent.converted}</td>

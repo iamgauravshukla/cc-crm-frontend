@@ -34,9 +34,16 @@ function OldBookings() {
   const [sortOrder, setSortOrder] = useState('desc'); // 'desc' (newest first) or 'asc' (oldest first)
   const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
   const [page, setPage] = useState(1);
-  const [dateRange, setDateRange] = useState('all');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
+  
+  // Booking Created Date Filter (timestamp based)
+  const [createdDateRange, setCreatedDateRange] = useState('all');
+  const [customCreatedStartDate, setCustomCreatedStartDate] = useState('');
+  const [customCreatedEndDate, setCustomCreatedEndDate] = useState('');
+  
+  // Appointment Date Filter (scheduled date based)
+  const [appointmentDateRange, setAppointmentDateRange] = useState('all');
+  const [customAppointmentStartDate, setCustomAppointmentStartDate] = useState('');
+  const [customAppointmentEndDate, setCustomAppointmentEndDate] = useState('');
   
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -92,7 +99,10 @@ function OldBookings() {
 
   const fetchBookings = async () => {
     // Don't fetch if custom date range is selected but dates aren't both filled
-    if (dateRange === 'custom' && (!customStartDate || !customEndDate)) {
+    if (createdDateRange === 'custom' && (!customCreatedStartDate || !customCreatedEndDate)) {
+      return;
+    }
+    if (appointmentDateRange === 'custom' && (!customAppointmentStartDate || !customAppointmentEndDate)) {
       return;
     }
 
@@ -109,12 +119,20 @@ function OldBookings() {
         sortOrder: sortOrder === 'desc' ? 'newest' : 'oldest'
       };
       
-      // Add date range filters
-      if (dateRange === 'custom' && customStartDate && customEndDate) {
-        params.startDate = customStartDate;
-        params.endDate = customEndDate;
-      } else if (dateRange !== 'all') {
-        params.dateRange = dateRange;
+      // Add Booking Created Date filters
+      if (createdDateRange === 'custom' && customCreatedStartDate && customCreatedEndDate) {
+        params.createdStartDate = customCreatedStartDate;
+        params.createdEndDate = customCreatedEndDate;
+      } else if (createdDateRange !== 'all') {
+        params.createdDateRange = createdDateRange;
+      }
+      
+      // Add Appointment Date filters
+      if (appointmentDateRange === 'custom' && customAppointmentStartDate && customAppointmentEndDate) {
+        params.appointmentStartDate = customAppointmentStartDate;
+        params.appointmentEndDate = customAppointmentEndDate;
+      } else if (appointmentDateRange !== 'all') {
+        params.appointmentDateRange = appointmentDateRange;
       }
       
       const response = await getOldBookings(params);
@@ -141,7 +159,7 @@ function OldBookings() {
   useEffect(() => {
     fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, debouncedSearchTerm, selectedBranch, selectedStatus, sortOrder, dateRange, customStartDate, customEndDate]);
+  }, [page, debouncedSearchTerm, selectedBranch, selectedStatus, sortOrder, createdDateRange, customCreatedStartDate, customCreatedEndDate, appointmentDateRange, customAppointmentStartDate, customAppointmentEndDate]);
 
   const handleStatusChange = (e) => {
     setSelectedStatus(e.target.value);
@@ -360,48 +378,91 @@ function OldBookings() {
             </button>
           </div>
 
+          {/* Booking Created Date Filter */}
           <div className="filter-group">
-            <label><FiCalendar /> Date Range:</label>
+            <label><FiCalendar /> Booking Created Date:</label>
             <select 
-              value={dateRange} 
+              value={createdDateRange} 
               onChange={(e) => {
-                setDateRange(e.target.value);
+                setCreatedDateRange(e.target.value);
                 setPage(1);
               }}
               className="filter-select"
             >
               <option value="all">All Time</option>
               <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="7">Last 7 Days</option>
-              <option value="30">Last 30 Days</option>
-              <option value="90">Last 90 Days</option>
+              <option value="last7">Last 7 Days</option>
+              <option value="last30">Last 30 Days</option>
+              <option value="last90">Last 90 Days</option>
               <option value="custom">Custom Range</option>
             </select>
           </div>
 
-          {dateRange === 'custom' && (
+          {createdDateRange === 'custom' && (
             <div className="filter-group custom-date-range">
               <input
                 type="date"
-                value={customStartDate}
+                value={customCreatedStartDate}
                 onChange={(e) => {
-                  setCustomStartDate(e.target.value);
+                  setCustomCreatedStartDate(e.target.value);
                   setPage(1);
                 }}
-                max={customEndDate || new Date().toISOString().split('T')[0]}
+                max={customCreatedEndDate || new Date().toISOString().split('T')[0]}
                 className="date-input"
               />
               <span className="date-separator">to</span>
               <input
                 type="date"
-                value={customEndDate}
+                value={customCreatedEndDate}
                 onChange={(e) => {
-                  setCustomEndDate(e.target.value);
+                  setCustomCreatedEndDate(e.target.value);
                   setPage(1);
                 }}
-                min={customStartDate}
+                min={customCreatedStartDate}
                 max={new Date().toISOString().split('T')[0]}
+                className="date-input"
+              />
+            </div>
+          )}
+
+          {/* Appointment Date Filter */}
+          <div className="filter-group">
+            <label><FiCalendar /> Appointment Scheduled Date:</label>
+            <select 
+              value={appointmentDateRange} 
+              onChange={(e) => {
+                setAppointmentDateRange(e.target.value);
+                setPage(1);
+              }}
+              className="filter-select"
+            >
+              <option value="all">All Time</option>
+              <option value="today">Today</option>
+              <option value="tomorrow">Tomorrow</option>
+              <option value="thisWeek">This Week</option>
+              <option value="custom">Custom Date Range</option>
+            </select>
+          </div>
+
+          {appointmentDateRange === 'custom' && (
+            <div className="filter-group custom-date-range">
+              <input
+                type="date"
+                value={customAppointmentStartDate}
+                onChange={(e) => {
+                  setCustomAppointmentStartDate(e.target.value);
+                  setPage(1);
+                }}
+                className="date-input"
+              />
+              <span className="date-separator">to</span>
+              <input
+                type="date"
+                value={customAppointmentEndDate}
+                onChange={(e) => {
+                  setCustomAppointmentEndDate(e.target.value);
+                  setPage(1);
+                }}
                 className="date-input"
               />
             </div>

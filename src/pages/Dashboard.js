@@ -338,7 +338,10 @@ function Dashboard({ onLogout }) {
                         <th>Treatment Area</th>
                         <th>Freebie</th>
                         <th>Companion</th>
+                        <th>Companion Age</th>
+                        <th>Companion Gender</th>
                         <th>Companion Treatment</th>
+                        <th>Companion Freebie</th>
                         <th>Payment</th>
                         <th>Price</th>
                         <th>Agent</th>
@@ -365,7 +368,10 @@ function Dashboard({ onLogout }) {
                           <td>{booking.area || '-'}</td>
                           <td>{booking.freebie || '-'}</td>
                           <td>{booking.companionName || '-'}</td>
+                          <td>{booking.companionAge || '-'}</td>
+                          <td>{booking.companionGender || '-'}</td>
                           <td>{booking.companionTreatment || '-'}</td>
+                          <td>{booking.companionFreebie || '-'}</td>
                           <td>{booking.paymentMode || '-'}</td>
                           <td><strong>₱{booking.price.toFixed(2)}</strong></td>
                           <td>{booking.agent}</td>

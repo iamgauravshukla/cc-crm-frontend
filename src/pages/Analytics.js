@@ -437,6 +437,39 @@ function Analytics() {
           </div>
         </section>
 
+        {/* Agent Arrival Rate */}
+        <section className="chart-section">
+          <h2 style={{display: 'flex', alignItems: 'center'}}><FiTarget style={{marginRight: '8px'}} /> Arrival Rate by Agent</h2>
+          <div className="chart-container">
+            <Chart
+              options={{
+                ...getChartTheme(),
+                chart: { ...getChartTheme().chart, type: 'bar', toolbar: { show: true } },
+                plotOptions: { bar: { borderRadius: 8, columnWidth: '60%' } },
+                colors: ['#10B981'],
+                xaxis: { 
+                  categories: agentPerformance.slice(0, 10).map(a => a.name),
+                  labels: { rotate: -45, style: { fontSize: '11px', colors: isDarkMode ? '#cbd5e1' : '#64748b' } }
+                },
+                yaxis: { 
+                  title: { text: 'Arrival Rate (%)', style: { color: isDarkMode ? '#cbd5e1' : '#64748b' } },
+                  labels: { style: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } },
+                  min: 0,
+                  max: 100
+                },
+                dataLabels: { enabled: false },
+                legend: { position: 'top', labels: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } },
+                grid: { strokeDashArray: 4, borderColor: isDarkMode ? '#334155' : '#e5e7eb' }
+              }}
+              series={[
+                { name: 'Arrival Rate (%)', data: agentPerformance.slice(0, 10).map(a => a.arrivalRate || 0) }
+              ]}
+              type="bar"
+              height={300}
+            />
+          </div>
+        </section>
+
         {/* Demographics */}
         <section className="chart-section">
           <h2><FiPieChart style={{marginRight: '8px', verticalAlign: 'middle'}} /> Customer Demographics</h2>
