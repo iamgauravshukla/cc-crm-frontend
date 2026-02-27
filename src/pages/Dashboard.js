@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Chart from 'react-apexcharts';
 import api from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import { useTheme } from '../context/ThemeContext';
-import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiShoppingBag, FiPercent, FiAward, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiShoppingBag, FiPercent, FiAward } from 'react-icons/fi';
 
 function Dashboard({ onLogout }) {
   const [user, setUser] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [trendData, setTrendData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
   
   // Use theme context for reactive theme detection
   const { theme } = useTheme();
@@ -70,10 +68,6 @@ function Dashboard({ onLogout }) {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
-
-  const handleCardClick = (path) => {
-    navigate(path);
-  };
 
   const getStatusClass = (status) => {
     if (!status) return 'status-badge';
@@ -427,7 +421,7 @@ function Dashboard({ onLogout }) {
                           <td>{booking.matchReason || '-'}</td>
                           <td>{booking.matchedSource || '-'}</td>
                         </tr>
-                      ))}}
+                      ))}
                     </tbody>
                   </table>
                 </div>

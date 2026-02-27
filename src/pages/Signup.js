@@ -3,6 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { signup } from '../services/api';
 
 function Signup() {
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [accessPassword, setAccessPassword] = useState('');
+  const [accessError, setAccessError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -19,6 +22,17 @@ function Signup() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const handleAccessSubmit = (e) => {
+    e.preventDefault();
+    if (accessPassword === 'Admin@Ageless') {
+      setIsAuthorized(true);
+      setAccessError('');
+    } else {
+      setAccessError('Invalid access password. Please contact your administrator.');
+      setAccessPassword('');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -86,11 +100,49 @@ function Signup() {
       
       <div className="auth-right-section">
         <div className="modern-auth-card">
-        <h2>Create Account</h2>
+        
+        {!isAuthorized ? (
+          <>
+            <h2>Access Verification</h2>
+            <p style={{ marginBottom: '20px', color: '#666', fontSize: '14px' }}>
+              Please enter the access password to create a new account
+            </p>
 
-        {error && <div className="modern-error-message">{error}</div>}
+            {accessError && <div className="modern-error-message">{accessError}</div>}
 
-        <form onSubmit={handleSubmit}>
+            <form onSubmit={handleAccessSubmit}>
+              <div className="modern-form-group">
+                <label htmlFor="accessPassword">Access Password</label>
+                <div className="input-wrapper">
+                  <input
+                    type="password"
+                    id="accessPassword"
+                    value={accessPassword}
+                    onChange={(e) => setAccessPassword(e.target.value)}
+                    required
+                    placeholder="Enter access password"
+                    autoFocus
+                  />
+                  <span className="input-icon">🔐</span>
+                </div>
+              </div>
+
+              <button type="submit" className="btn-modern-primary">
+                Verify Access
+              </button>
+            </form>
+
+            <div className="modern-auth-link">
+              Already have an account? <Link to="/login">Sign In</Link>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2>Create Account</h2>
+
+            {error && <div className="modern-error-message">{error}</div>}
+
+            <form onSubmit={handleSubmit}>
           <div className="modern-form-group">
             <label htmlFor="name">Full Name</label>
             <div className="input-wrapper">
@@ -181,6 +233,9 @@ function Signup() {
         <div className="modern-auth-link">
           Already have an account? <Link to="/login">Sign In</Link>
         </div>
+        </>
+        )}
+        
         </div>
       </div>
     </div>
