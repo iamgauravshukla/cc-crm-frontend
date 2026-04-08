@@ -12,6 +12,7 @@ import AdPerformance from './pages/AdPerformance';
 import DailyReports from './pages/DailyReports';
 import SalesReport from './pages/SalesReport';
 import UsersManagement from './pages/UsersManagement';
+import WebsiteLeads from './pages/WebsiteLeads';
 import './App.css';
 
 function App() {
@@ -111,6 +112,11 @@ function App() {
             <AdminRoute>
               <UsersManagement />
             </AdminRoute>
+          } />
+          <Route path="/website-leads" element={
+            <PrivateRoute>
+              <WebsiteLeads />
+            </PrivateRoute>
           } />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>
