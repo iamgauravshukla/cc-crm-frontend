@@ -13,6 +13,7 @@ import DailyReports from './pages/DailyReports';
 import SalesReport from './pages/SalesReport';
 import UsersManagement from './pages/UsersManagement';
 import WebsiteLeads from './pages/WebsiteLeads';
+import LeadsTest from './pages/LeadsTest';
 import './App.css';
 
 function App() {
@@ -62,6 +63,7 @@ function App() {
     <ThemeProvider>
       <Router>
         <Routes>
+          <Route path="/leads-test" element={<LeadsTest />} />
           <Route path="/login" element={
             isAuthenticated ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />
           } />
