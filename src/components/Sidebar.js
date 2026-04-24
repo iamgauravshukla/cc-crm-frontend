@@ -50,7 +50,7 @@ function Sidebar() {
     { path: '/sales-report', label: 'Sales Report', icon: FiDollarSign, roles: ['Admin'] },
     { path: '/agent-performance', label: 'Agent Performance', icon: FiUsers, roles: ['Admin'] },
     { path: '/ad-performance', label: 'Ad Performance', icon: FiTrendingUp, roles: ['Admin'] },
-    { path: '/website-leads', label: 'Website Leads', icon: FiGlobe, roles: ['Admin'] },
+    { path: '/website-leads', label: 'Website Leads', icon: FiGlobe, roles: ['Admin', 'Agent'] },
     { path: '/users-management', label: 'Users Management', icon: FiUsers, roles: ['Admin'] },
   ];
 
