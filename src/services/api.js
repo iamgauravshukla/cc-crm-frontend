@@ -66,5 +66,6 @@ export const getTomorrowSummary = () => api.get('/bookings/daily-reports/tomorro
 export const getCallLeads = (params) => api.get('/leads/call', { params });
 export const getBookingLeads = (params) => api.get('/leads/booking', { params });
 export const getLeadCenters = () => api.get('/leads/centers');
+export const updateLead = (type, rowIndex, data) => api.patch(`/leads/${type}/${rowIndex}`, data);
 
 export default api;

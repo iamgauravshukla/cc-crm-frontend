@@ -2111,6 +2111,11 @@ body.sidebar-collapsed .main-content {
   color: white;
 }
 
+thead {
+  background-color: #4CAF50;
+  color: white;
+}
+
 .bookings-table th {
   padding: 15px;
   text-align: left;

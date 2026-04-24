@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiSearch, FiRefreshCw, FiPhone, FiMail, FiCalendar, FiUser, FiMessageSquare } from 'react-icons/fi';
-import { getCallLeads, getBookingLeads, getLeadCenters } from '../services/api';
+import { FiSearch, FiRefreshCw, FiPhone, FiMail, FiCalendar, FiUser, FiMessageSquare, FiEdit2, FiX, FiCheck } from 'react-icons/fi';
+import { getCallLeads, getBookingLeads, getLeadCenters, updateLead } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import './WebsiteLeads.css';
@@ -20,6 +20,13 @@ function WebsiteLeads() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('latest');
   const [lastRefresh, setLastRefresh] = useState(null);
+
+  // Edit modal state
+  const [editModal, setEditModal] = useState(null); // { lead, type }
+  const [editStatus, setEditStatus] = useState('');
+  const [editFeedback, setEditFeedback] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   // Fetch available centers once
   useEffect(() => {
@@ -64,7 +71,43 @@ function WebsiteLeads() {
     if (s === 'new') return <span className="lead-badge lead-badge-new">New</span>;
     if (s === 'contacted') return <span className="lead-badge lead-badge-contacted">Contacted</span>;
     if (s === 'booked') return <span className="lead-badge lead-badge-booked">Booked</span>;
+    if (s === 'not interested') return <span className="lead-badge lead-badge-lost">Not Interested</span>;
     return <span className="lead-badge lead-badge-default">{status}</span>;
+  };
+
+  const openEditModal = (lead) => {
+    setEditModal({ lead, type: activeTab });
+    setEditStatus(lead.status || 'New');
+    setEditFeedback(lead.feedback || '');
+    setEditError('');
+  };
+
+  const closeEditModal = () => {
+    setEditModal(null);
+    setEditError('');
+  };
+
+  const saveEdit = async () => {
+    if (!editModal) return;
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await updateLead(editModal.type, editModal.lead.rowIndex, {
+        status: editStatus,
+        feedback: editFeedback,
+      });
+      // Update local state so table reflects change immediately
+      setLeads(prev => prev.map(l =>
+        l.rowIndex === editModal.lead.rowIndex
+          ? { ...l, status: editStatus, feedback: editFeedback }
+          : l
+      ));
+      closeEditModal();
+    } catch (err) {
+      setEditError('Failed to save. Please try again.');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   return (
@@ -183,6 +226,8 @@ function WebsiteLeads() {
                       {activeTab === 'booking' && <th><FiCalendar size={12} /> Schedule</th>}
                       {activeTab === 'booking' && <th>Payment Method</th>}
                       <th>Status</th>
+                      <th>Feedback</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -220,6 +265,22 @@ function WebsiteLeads() {
                         {activeTab === 'booking' && <td>{lead.schedule || '—'}</td>}
                         {activeTab === 'booking' && <td>{lead.paymentMethod || '—'}</td>}
                         <td>{getStatusBadge(lead.status)}</td>
+                        <td className="leads-feedback-cell">
+                          {lead.feedback
+                            ? <span title={lead.feedback}>
+                                {lead.feedback.length > 50 ? lead.feedback.substring(0, 50) + '…' : lead.feedback}
+                              </span>
+                            : <span className="leads-feedback-empty">—</span>}
+                        </td>
+                        <td>
+                          <button
+                            className="lead-edit-btn"
+                            title="Edit status & feedback"
+                            onClick={() => openEditModal(lead)}
+                          >
+                            <FiEdit2 size={13} />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -242,6 +303,60 @@ function WebsiteLeads() {
 
         </div>
       </div>
+
+      {/* ── Edit Modal ── */}
+      {editModal && (
+        <div className="lead-modal-overlay" onClick={closeEditModal}>
+          <div className="lead-modal" onClick={e => e.stopPropagation()}>
+            <div className="lead-modal-header">
+              <div>
+                <h3>Edit Lead</h3>
+                <p className="lead-modal-name">{editModal.lead.fullname} · {editModal.lead.center}</p>
+              </div>
+              <button className="lead-modal-close" onClick={closeEditModal}>
+                <FiX size={18} />
+              </button>
+            </div>
+
+            <div className="lead-modal-body">
+              <label className="lead-modal-label">Status</label>
+              <select
+                className="lead-modal-select"
+                value={editStatus}
+                onChange={e => setEditStatus(e.target.value)}
+              >
+                <option value="New">New</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Booked">Booked</option>
+                <option value="Not Interested">Not Interested</option>
+              </select>
+
+              <label className="lead-modal-label" style={{ marginTop: 14 }}>
+                Feedback / Notes
+              </label>
+              <textarea
+                className="lead-modal-textarea"
+                placeholder="What happened when you contacted them? Add any notes here…"
+                value={editFeedback}
+                onChange={e => setEditFeedback(e.target.value)}
+                rows={4}
+              />
+
+              {editError && <div className="lead-modal-error">{editError}</div>}
+            </div>
+
+            <div className="lead-modal-footer">
+              <button className="lead-modal-cancel" onClick={closeEditModal} disabled={editSaving}>
+                Cancel
+              </button>
+              <button className="lead-modal-save" onClick={saveEdit} disabled={editSaving}>
+                <FiCheck size={14} />
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
