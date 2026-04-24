@@ -340,8 +340,6 @@
   color: var(--text-secondary, #64748b);
 }
 
-/* ── API hint ───────────────────────────────────────────────────────────── */
-
 .leads-api-hint {
   display: flex;
   align-items: center;
