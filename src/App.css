@@ -2335,11 +2335,65 @@ thead {
   margin-bottom: 30px;
 }
 
-.treatment-distribution-grid {
+/* Arrivals Averages Section */
+.arrivals-averages-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 25px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
 }
+
+.arrivals-agent-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.arrivals-agent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px var(--card-shadow);
+}
+
+.arrivals-agent-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.arrivals-stats-row {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.arrivals-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.arrivals-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.arrivals-stat-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #10B981;
+}
+
+
+
 
 .agent-treatment-card {
   background: var(--bg-secondary);

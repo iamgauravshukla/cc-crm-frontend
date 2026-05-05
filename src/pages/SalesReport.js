@@ -19,6 +19,14 @@ const SalesReport = () => {
   const [appliedEndDate, setAppliedEndDate] = useState('');
   const [rangeError, setRangeError] = useState('');
   const [openTooltipId, setOpenTooltipId] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState('all');
+
+  const BRANCHES = [
+    'all',
+    'AI SKIN', 'CENTRIS', 'DNA MANILA', 'GENEVA', 'GLORIETTA',
+    'HERA', 'LIONESSE', 'LUMIA', 'PARIS', 'SM NORTH',
+    'VENICE', 'STA LUCIA', 'FELIZ', 'ESTANCIA'
+  ];
 
   const fetchSalesReport = useCallback(async () => {
     try {
@@ -26,14 +34,14 @@ const SalesReport = () => {
         return;
       }
       setLoading(true);
-      const response = await getSalesReport({ startDate: appliedStartDate, endDate: appliedEndDate });
+      const response = await getSalesReport({ startDate: appliedStartDate, endDate: appliedEndDate, branch: selectedBranch });
       setSalesData(response.data.data);
     } catch (error) {
       console.error('Error fetching sales report:', error);
     } finally {
       setLoading(false);
     }
-  }, [appliedEndDate, appliedStartDate]);
+  }, [appliedEndDate, appliedStartDate, selectedBranch]);
 
   useEffect(() => {
     fetchSalesReport();
@@ -622,13 +630,26 @@ const SalesReport = () => {
           <div className="page-header">
             <div className="header-left">
               <h1>Sales Report</h1>
-              <p className="page-subtitle">Comprehensive sales insights - Sales use "Arrived & bought" and "Comeback & bought". Arrival rate includes "Arrived not potential" | Range: {rangeDisplay}</p>
+              <p className="page-subtitle">Sales = "Arrived &amp; bought", "Arrived not potential" &amp; "Comeback &amp; bought" | Range: {rangeDisplay}</p>
             </div>
             <div className="header-actions">
                 <button className="current-month-btn" onClick={handleCurrentMonthRange}>
                   Current Month
                 </button>
               <div className="filters-container">
+                <div className="date-field">
+                  <label htmlFor="sales-branch">Branch</label>
+                  <select
+                    id="sales-branch"
+                    className="date-input branch-select"
+                    value={selectedBranch}
+                    onChange={(e) => setSelectedBranch(e.target.value)}
+                  >
+                    {BRANCHES.map(b => (
+                      <option key={b} value={b}>{b === 'all' ? 'All Branches' : b}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="date-range-inputs">
                   <div className="date-field">
                     <label htmlFor="sales-start-date">Start</label>
@@ -666,32 +687,37 @@ const SalesReport = () => {
 
           {salesData && (
           <>
-          {/* Enhanced Summary Cards */}
-          <div className="summary-cards">
-            <div
-              className="summary-card daily highlight"
-            >
-              <div className="card-header">
-                <div className="card-icon">
-                  <FiDollarSign />
-                </div>
-                <div className="card-header-meta">
-                  <span className="card-badge">Range</span>
-                  {renderInfoTooltip(
-                    'range-sales',
-                    `Range Sales = total sales from all branches within ${rangeDisplay}.`
-                  )}
-                </div>
-              </div>
-              <div className="card-content">
-                <h3>Range Sales</h3>
-                <p className="amount">₱{rangeSales.overall.toLocaleString()}</p>
-                <div className="card-footer">
-                  <span className="card-label">{rangeSales.byBranch.length} active branches</span>
-                </div>
+          {/* ── Overall Sales Hero Widget ── */}
+          <div className="overall-sales-hero">
+            <div className="overall-sales-hero-left">
+              <span className="overall-sales-label">Overall Sales</span>
+              <div className="overall-sales-amount">₱{rangeSales.overall.toLocaleString()}</div>
+              <div className="overall-sales-meta">
+                {selectedBranch === 'all' ? 'All Branches' : selectedBranch}
+                &nbsp;·&nbsp;{rangeDisplay}
               </div>
             </div>
-
+            <div className="overall-sales-hero-right">
+              <div className="overall-sales-stat">
+                <span className="overall-sales-stat-value">{getTotalBookings().toLocaleString()}</span>
+                <span className="overall-sales-stat-label">Total Bookings</span>
+              </div>
+              <div className="overall-sales-divider" />
+              <div className="overall-sales-stat">
+                <span className="overall-sales-stat-value">₱{getAverageSaleValue().toLocaleString()}</span>
+                <span className="overall-sales-stat-label">Avg Sale Value</span>
+              </div>
+              <div className="overall-sales-divider" />
+              <div className="overall-sales-stat">
+                <span className={`overall-sales-stat-value ${rangeSales.overall >= previousRangeSales.overall ? 'positive' : 'negative'}`}>
+                  {rangeSales.overall >= previousRangeSales.overall ? '▲' : '▼'}&nbsp;
+                  {Math.abs(calculateGrowth(rangeSales.overall, previousRangeSales.overall))}%
+                </span>
+                <span className="overall-sales-stat-label">vs Previous Range</span>
+              </div>
+            </div>
+          </div>
+          <div className="summary-cards">
             <div
               className="summary-card current-month highlight"
             >

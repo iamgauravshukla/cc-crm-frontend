@@ -14,6 +14,7 @@ function AgentPerformance() {
   const [customEndDate, setCustomEndDate] = useState('');
   const [sortBy, setSortBy] = useState('revenue');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [selectedAgent, setSelectedAgent] = useState('All');
   
   // Use theme context for reactive theme detection
   const { theme } = useTheme();
@@ -51,20 +52,25 @@ function AgentPerformance() {
     fetchPerformanceData();
   }, [fetchPerformanceData]);
 
-  const getSortedAgents = () => {
+  const getAgentList = () => {
     if (!performanceData) return [];
-    
-    const agents = [...performanceData.agents];
+    return performanceData.agents.map(a => a.name).sort();
+  };
+
+  const getFilteredAgents = () => {
+    if (!performanceData) return [];
+    if (selectedAgent === 'All') return performanceData.agents;
+    return performanceData.agents.filter(a => a.name === selectedAgent);
+  };
+
+  const getSortedAgents = () => {
+    const agents = [...getFilteredAgents()];
     agents.sort((a, b) => {
       let aVal = a[sortBy] || 0;
       let bVal = b[sortBy] || 0;
-      
-      if (sortOrder === 'desc') {
-        return bVal - aVal;
-      }
+      if (sortOrder === 'desc') return bVal - aVal;
       return aVal - bVal;
     });
-    
     return agents;
   };
 
@@ -102,7 +108,7 @@ function AgentPerformance() {
     },
     stroke: { show: true, width: 2, colors: ['transparent'] },
     xaxis: {
-      categories: performanceData.agents.map(a => a.name),
+      categories: getFilteredAgents().map(a => a.name),
       labels: { 
         rotate: -45,
         style: {
@@ -150,11 +156,11 @@ function AgentPerformance() {
   const comparisonChartSeries = performanceData ? [
     {
       name: 'Bookings',
-      data: performanceData.agents.map(a => a.bookings)
+      data: getFilteredAgents().map(a => a.bookings)
     },
     {
       name: 'Revenue',
-      data: performanceData.agents.map(a => Math.round(a.revenue / 100)) // Scale down for visibility
+      data: getFilteredAgents().map(a => Math.round(a.revenue / 100)) // Scale down for visibility
     }
   ] : [];
 
@@ -186,7 +192,7 @@ function AgentPerformance() {
       }
     },
     xaxis: {
-      categories: performanceData.agents.map(a => a.name),
+      categories: getFilteredAgents().map(a => a.name),
       max: 100,
       labels: {
         style: {
@@ -217,7 +223,7 @@ function AgentPerformance() {
 
   const conversionChartSeries = performanceData ? [{
     name: 'Conversion Rate',
-    data: performanceData.agents.map(a => a.conversionRate ?? 0)
+    data: getFilteredAgents().map(a => a.conversionRate ?? 0)
   }] : [];
 
   const arrivalChartOptions = performanceData ? {
@@ -248,7 +254,7 @@ function AgentPerformance() {
       }
     },
     xaxis: {
-      categories: performanceData.agents.map(a => a.name),
+      categories: getFilteredAgents().map(a => a.name),
       max: 100,
       labels: {
         style: {
@@ -279,7 +285,7 @@ function AgentPerformance() {
 
   const arrivalChartSeries = performanceData ? [{
     name: 'Arrival Rate',
-    data: performanceData.agents.map(a => a.arrivalRate ?? 0)
+    data: getFilteredAgents().map(a => a.arrivalRate ?? 0)
   }] : [];
 
   return (
@@ -332,6 +338,19 @@ function AgentPerformance() {
                     />
                   </div>
                 )}
+                <div className="filter-group">
+                  <label><FiUsers /> Agent:</label>
+                  <select
+                    value={selectedAgent}
+                    onChange={(e) => setSelectedAgent(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="All">All Agents</option>
+                    {getAgentList().map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -379,6 +398,37 @@ function AgentPerformance() {
                   <div className="stat-content">
                     <p className="stat-label">Avg Conversion</p>
                     <h2 className="stat-value">{performanceData.summary.avgConversion.toFixed(1)}%</h2>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrivals Averages Section */}
+              <div className="analytics-card" style={{ marginBottom: '1.5rem' }}>
+                <div className="analytics-card-header">
+                  <h3><FiTarget /> Arrival Averages per Agent</h3>
+                  <p>Overall, weekly, and monthly arrival averages for the selected date range</p>
+                </div>
+                <div className="analytics-card-body">
+                  <div className="arrivals-averages-grid">
+                    {getFilteredAgents().map(agent => (
+                      <div key={agent.name} className="arrivals-agent-card">
+                        <div className="arrivals-agent-name">{agent.name}</div>
+                        <div className="arrivals-stats-row">
+                          <div className="arrivals-stat">
+                            <span className="arrivals-stat-label">Overall</span>
+                            <span className="arrivals-stat-value">{agent.arrivals}</span>
+                          </div>
+                          <div className="arrivals-stat">
+                            <span className="arrivals-stat-label">Avg / Week</span>
+                            <span className="arrivals-stat-value">{agent.avgWeeklyArrivals ?? '—'}</span>
+                          </div>
+                          <div className="arrivals-stat">
+                            <span className="arrivals-stat-label">Avg / Month</span>
+                            <span className="arrivals-stat-value">{agent.avgMonthlyArrivals ?? '—'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -501,7 +551,7 @@ function AgentPerformance() {
                 <div className="treatment-section">
                   <h2 className="section-title">📊 Treatment Distribution by Agent</h2>
                   <div className="treatment-distribution-grid">
-                    {performanceData.agents.map((agent) => {
+                    {getFilteredAgents().map((agent) => {
                       const totalTreatments = agent.treatments ? agent.treatments.reduce((sum, t) => sum + t.count, 0) : 0;
                       
                       return (

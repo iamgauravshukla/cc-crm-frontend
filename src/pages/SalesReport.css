@@ -810,3 +810,107 @@
     padding: 10px;
   }
 }
+
+/* ── Branch select in filters ─────────────────────────────────────────────── */
+.sales-report-page .branch-select {
+  min-width: 160px;
+  cursor: pointer;
+}
+
+/* ── Overall Sales Hero Widget ────────────────────────────────────────────── */
+.overall-sales-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #10b981 100%);
+  border-radius: 16px;
+  padding: 32px 40px;
+  margin-bottom: 28px;
+  color: #fff;
+  flex-wrap: wrap;
+  gap: 24px;
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+}
+
+.overall-sales-hero-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.overall-sales-label {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
+.overall-sales-amount {
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+
+.overall-sales-meta {
+  font-size: 13px;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.overall-sales-hero-right {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.overall-sales-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.overall-sales-stat-value {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.overall-sales-stat-value.positive {
+  color: #a7f3d0;
+}
+
+.overall-sales-stat-value.negative {
+  color: #fca5a5;
+}
+
+.overall-sales-stat-label {
+  font-size: 11px;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.overall-sales-divider {
+  width: 1px;
+  height: 40px;
+  background: rgba(255,255,255,0.25);
+}
+
+@media (max-width: 640px) {
+  .overall-sales-hero {
+    padding: 24px 20px;
+  }
+  .overall-sales-amount {
+    font-size: 36px;
+  }
+  .overall-sales-hero-right {
+    gap: 16px;
+  }
+  .overall-sales-divider {
+    display: none;
+  }
+}
