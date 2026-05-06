@@ -35,6 +35,7 @@ function CreateBooking() {
     companionFreebie: '',
     companionTreatment: '',
     companionGender: '',
+    companionArea: '',
     bookingDetails: '',
     agent: '',
     adInteracted: '',
@@ -435,6 +436,17 @@ function CreateBooking() {
                       value={formData.companionFreebie}
                       onChange={handleChange}
                       placeholder="Freebie for companion"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Companion Area</label>
+                    <input
+                      type="text"
+                      name="companionArea"
+                      value={formData.companionArea}
+                      onChange={handleChange}
+                      placeholder="Area of treatment"
                     />
                   </div>
 

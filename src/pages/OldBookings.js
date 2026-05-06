@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera } from 'react-icons/fi';
+import html2canvas from 'html2canvas';
 import { getOldBookings } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
@@ -29,6 +30,7 @@ function OldBookings() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
   const [viewMode, setViewMode] = useState('table');
+  const cardRefs = useRef({});
   const [page, setPage] = useState(1);
 
   // Quick filter state (Monday.com style)
@@ -369,7 +371,8 @@ function OldBookings() {
       companionAge: booking.companionAge || '',
       companionGender: booking.companionGender || '',
       companionTreatment: booking.companionTreatment || '',
-      companionFreebie: booking.companionFreebie || ''
+      companionFreebie: booking.companionFreebie || '',
+      companionArea: booking.companionArea || ''
     });
     setUpdateError('');
     setUpdateSuccess('');
@@ -462,6 +465,20 @@ function OldBookings() {
       console.error('Validation toggle error:', err);
     } finally {
       setValidationUpdating(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+  }, []);
+
+  const handleCardSnapshot = useCallback(async (booking, index) => {
+    const el = cardRefs.current[index];
+    if (!el) return;
+    try {
+      const canvas = await html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true });
+      const link = document.createElement('a');
+      link.download = `booking-${booking.firstName}-${booking.lastName}-${booking.date || 'nodate'}.png`.replace(/\s+/g, '-');
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error('Snapshot failed:', err);
     }
   }, []);
 
@@ -688,6 +705,7 @@ function OldBookings() {
                       <th>Companion Age</th>
                       <th>Companion Gender</th>
                       <th>Companion Freebie</th>
+                      <th>Companion Area</th>
                       {user?.role === 'Admin' && <th className="validation-col-header">Cancel Validation</th>}
                       {user?.role === 'Admin' && <th className="validation-col-header">Underage Validation</th>}
                     </tr>
@@ -745,6 +763,7 @@ function OldBookings() {
                         <td>{booking.companionAge || '-'}</td>
                         <td>{booking.companionGender || '-'}</td>
                         <td>{booking.companionFreebie || '-'}</td>
+                        <td>{booking.companionArea || '-'}</td>
                         {user?.role === 'Admin' && (
                           <td className="validation-cell">
                             <label className="validation-checkbox-wrap" title="Cancel Validation: exclude this arrival from agent stats">
@@ -779,15 +798,25 @@ function OldBookings() {
             ) : (
               <div className="bookings-cards-grid">
                 {bookings.map((booking, index) => (
-                  <div key={index} className="booking-card">
+                  <div key={index} className="booking-card" ref={el => cardRefs.current[index] = el}>
                     <div className="booking-card-header">
                       <div className="card-header-left">
                         <h3>{booking.firstName} {booking.lastName}</h3>
                         <span className="card-date">{booking.date || '-'} • {booking.timestamp ? new Date(booking.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                       </div>
-                      <span className={getStatusClass(booking.status)}>
-                        {booking.status || 'N/A'}
-                      </span>
+                      <div className="card-header-right">
+                        <span className={getStatusClass(booking.status)}>
+                          {booking.status || 'N/A'}
+                        </span>
+                        <div className="card-actions">
+                          <button className="card-action-btn card-edit-btn" onClick={() => handleEditClick(booking)} title="Edit booking">
+                            <FiEdit2 size={14} />
+                          </button>
+                          <button className="card-action-btn card-snap-btn" onClick={() => handleCardSnapshot(booking, index)} title="Save as image">
+                            <FiCamera size={14} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="booking-card-body">
@@ -882,6 +911,10 @@ function OldBookings() {
                             <div className="card-info-item">
                               <span className="label">Freebie:</span>
                               <span className="value">{booking.companionFreebie || '-'}</span>
+                            </div>
+                            <div className="card-info-item">
+                              <span className="label">Area:</span>
+                              <span className="value">{booking.companionArea || '-'}</span>
                             </div>
                           </div>
                         </div>
@@ -1195,6 +1228,17 @@ function OldBookings() {
                       name="companionFreebie"
                       value={editFormData.companionFreebie}
                       onChange={handleEditFormChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Companion Area</label>
+                    <input
+                      type="text"
+                      name="companionArea"
+                      value={editFormData.companionArea}
+                      onChange={handleEditFormChange}
+                      placeholder="Area of treatment"
                     />
                   </div>
                 </div>

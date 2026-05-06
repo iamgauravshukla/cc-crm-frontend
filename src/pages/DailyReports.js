@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getDailyReports, getOTSBookings, getOverallBookings, getTomorrowBookings, getNext7DaysBookings, getCancellations, getArrivalsToday, getTomorrowSummary } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import ReactApexChart from 'react-apexcharts';
-import { FiRefreshCw, FiTrendingUp, FiDollarSign, FiCalendar, FiBarChart2, FiPieChart, FiAlertCircle, FiCheckCircle, FiX, FiMaximize2, FiPhone, FiMail } from 'react-icons/fi';
+import html2canvas from 'html2canvas';
+import { FiRefreshCw, FiTrendingUp, FiDollarSign, FiCalendar, FiBarChart2, FiPieChart, FiAlertCircle, FiCheckCircle, FiX, FiMaximize2, FiPhone, FiMail, FiCamera, FiDownload } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import './DailyReports.css';
 
@@ -15,10 +16,53 @@ const DailyReports = () => {
   const [expandedSection, setExpandedSection] = useState(null);
   const [modalBookings, setModalBookings] = useState([]);
   const [modalLoading, setModalLoading] = useState(false);
+
+  // Snapshot selection
+  const [selectedCards, setSelectedCards] = useState(new Set());
+  const [snapshotMode, setSnapshotMode] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const cardRefs = useRef({});
   
   // Use theme context for reactive theme detection
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
+
+  const toggleCardSelect = useCallback((id) => {
+    setSelectedCards(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedCards(new Set(Object.keys(cardRefs.current)));
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedCards(new Set());
+    setSnapshotMode(false);
+  }, []);
+
+  const downloadSelected = useCallback(async () => {
+    if (selectedCards.size === 0) return;
+    setDownloading(true);
+    try {
+      for (const id of selectedCards) {
+        const el = cardRefs.current[id];
+        if (!el) continue;
+        const canvas = await html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true, logging: false });
+        const link = document.createElement('a');
+        link.download = `daily-report-${id}-${new Date().toISOString().slice(0,10)}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        // small delay between downloads
+        await new Promise(r => setTimeout(r, 200));
+      }
+    } finally {
+      setDownloading(false);
+    }
+  }, [selectedCards]);
 
   // Common chart theme
   const getChartTheme = () => ({
@@ -435,8 +479,15 @@ const DailyReports = () => {
   }];
 
   // Stat card component
-  const StatCard = ({ icon: Icon, title, value, subtitle, trend, trendColor = '#10b981' }) => (
-    <div className="stat-card-premium">
+  const StatCard = ({ id, icon: Icon, title, value, subtitle, trend, trendColor = '#10b981' }) => (
+    <div
+      className={`stat-card-premium${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has(id) ? ' snap-selected' : ''}`}
+      ref={el => { if (id) cardRefs.current[id] = el; }}
+      onClick={() => snapshotMode && id && toggleCardSelect(id)}
+    >
+      {snapshotMode && (
+        <div className="snap-check">{selectedCards.has(id) ? '✓' : ''}</div>
+      )}
       <div className="stat-card-header">
         <div className="stat-icon-wrapper" style={{ background: trendColor + '15' }}>
           <Icon size={24} style={{ color: trendColor }} />
@@ -468,6 +519,13 @@ const DailyReports = () => {
             <p className="page-subtitle">Real-time booking analytics for today</p>
           </div>
           <div className="header-right">
+            <button
+              onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }}
+              className={`btn-icon-primary${snapshotMode ? ' active' : ''}`}
+              title="Select cards to snapshot"
+            >
+              <FiCamera size={18} />
+            </button>
             <button onClick={fetchDailyReports} className="btn-icon-primary">
               <FiRefreshCw size={18} />
             </button>
@@ -488,6 +546,7 @@ const DailyReports = () => {
         {/* Top Metrics */}
         <div className="metrics-grid">
           <StatCard
+            id="metric-sameday"
             icon={FiCheckCircle}
             title="Same-Day Bookings"
             value={reports?.otsBookings?.count || 0}
@@ -496,6 +555,7 @@ const DailyReports = () => {
             trendColor="#2563eb"
           />
           <StatCard
+            id="metric-overall"
             icon={FiCalendar}
             title="Overall (7 Days)"
             value={reports?.overallBookings?.count || 0}
@@ -504,6 +564,7 @@ const DailyReports = () => {
             trendColor="#8b5cf6"
           />
           <StatCard
+            id="metric-tomorrow"
             icon={FiTrendingUp}
             title="Tomorrow's Bookings"
             value={Object.values(reports?.bookedTomorrow?.byBranch || {}).reduce((sum, b) => sum + b.count, 0)}
@@ -512,6 +573,7 @@ const DailyReports = () => {
             trendColor="#10b981"
           />
           <StatCard
+            id="metric-avg"
             icon={FiDollarSign}
             title="Avg. Booking Value"
             value={formatCurrency(avgValue)}
@@ -522,11 +584,45 @@ const DailyReports = () => {
 
         {/* Charts Section */}
         <div className="charts-container">
-          {/* 1. OTS (Same-Day) Bookings */}
-          <div className="chart-card full-width">
+            {/* 1. Overall Bookings */}
+          <div
+            className={`chart-card${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-overall') ? ' snap-selected' : ''}`}
+            ref={el => { cardRefs.current['chart-overall'] = el; }}
+            onClick={() => snapshotMode && toggleCardSelect('chart-overall')}
+          >
             <div className="chart-header">
               <div>
-                <h2>1️⃣ OTS (Same-Day) Bookings by Branch</h2>
+                <h2>Overall Bookings by Branch</h2>
+                <p>Distribution across branches (7-day forecast)</p>
+              </div>
+              <button className="btn-expand" onClick={() => handleExpandSection('overall')} title="View Details">
+                <FiMaximize2 size={18} />
+              </button>
+            </div>
+            {overallChartData.length > 0 ? (
+              <ReactApexChart
+                options={branchChartOptions}
+                series={branchChartSeries}
+                type="bar"
+                height={350}
+              />
+            ) : (
+              <div className="no-data">
+                <FiBarChart2 size={40} />
+                <p>No bookings data available</p>
+              </div>
+            )}
+          </div>
+
+          {/* 2. OTS (Same-Day) Bookings */}
+          <div
+            className={`chart-card full-width${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-ots') ? ' snap-selected' : ''}`}
+            ref={el => { cardRefs.current['chart-ots'] = el; }}
+            onClick={() => snapshotMode && toggleCardSelect('chart-ots')}
+          >
+            <div className="chart-header">
+              <div>
+                <h2>OTS (Same-Day) Bookings by Branch</h2>
                 <p>Created today & scheduled for today</p>
               </div>
               <button className="btn-expand" onClick={() => handleExpandSection('ots')} title="View Details">
@@ -549,7 +645,11 @@ const DailyReports = () => {
           </div>
 
           {/* 1.5 Arrivals Today */}
-          <div className="chart-card full-width">
+          <div
+            className={`chart-card full-width${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-arrivals') ? ' snap-selected' : ''}`}
+            ref={el => { cardRefs.current['chart-arrivals'] = el; }}
+            onClick={() => snapshotMode && toggleCardSelect('chart-arrivals')}
+          >
             <div className="chart-header">
               <div>
                 <h2>✅ Arrivals Today by Branch</h2>
@@ -612,37 +712,17 @@ const DailyReports = () => {
             </div>
           </div>
 
-          {/* 2. Overall Bookings */}
-          <div className="chart-card">
-            <div className="chart-header">
-              <div>
-                <h2>2️⃣ Overall Bookings by Branch</h2>
-                <p>Distribution across branches (7-day forecast)</p>
-              </div>
-              <button className="btn-expand" onClick={() => handleExpandSection('overall')} title="View Details">
-                <FiMaximize2 size={18} />
-              </button>
-            </div>
-            {overallChartData.length > 0 ? (
-              <ReactApexChart
-                options={branchChartOptions}
-                series={branchChartSeries}
-                type="bar"
-                height={350}
-              />
-            ) : (
-              <div className="no-data">
-                <FiBarChart2 size={40} />
-                <p>No bookings data available</p>
-              </div>
-            )}
-          </div>
+        
 
           {/* 3. Tomorrow's Schedule */}
-          <div className="chart-card">
+          <div
+            className={`chart-card${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-tomorrow') ? ' snap-selected' : ''}`}
+            ref={el => { cardRefs.current['chart-tomorrow'] = el; }}
+            onClick={() => snapshotMode && toggleCardSelect('chart-tomorrow')}
+          >
             <div className="chart-header">
               <div>
-                <h2>3️⃣ Tomorrow's Schedule by Branch</h2>
+                <h2>Tomorrow's Schedule by Branch</h2>
                 <p>Breakdown of tomorrow's appointments</p>
               </div>
               <button className="btn-expand" onClick={() => handleExpandSection('tomorrow')} title="View Details">
@@ -665,10 +745,14 @@ const DailyReports = () => {
           </div>
 
           {/* 4. Next 7 Days */}
-          <div className="chart-card full-width">
+          <div
+            className={`chart-card full-width${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-next7') ? ' snap-selected' : ''}`}
+            ref={el => { cardRefs.current['chart-next7'] = el; }}
+            onClick={() => snapshotMode && toggleCardSelect('chart-next7')}
+          >
             <div className="chart-header">
               <div>
-                <h2>4️⃣ Next 7 Days Appointments by Branch</h2>
+                <h2>Next 7 Days Appointments by Branch</h2>
                 <p>All scheduled appointments for the next week</p>
               </div>
               <button className="btn-expand" onClick={() => handleExpandSection('next7days')} title="View Details">
@@ -691,10 +775,14 @@ const DailyReports = () => {
           </div>
 
           {/* 5. Cancellations */}
-          <div className="chart-card">
+          <div
+            className={`chart-card${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-cancellations') ? ' snap-selected' : ''}`}
+            ref={el => { cardRefs.current['chart-cancellations'] = el; }}
+            onClick={() => snapshotMode && toggleCardSelect('chart-cancellations')}
+          >
             <div className="chart-header">
               <div>
-                <h2>5️⃣ Cancellations Today</h2>
+                <h2>Cancellations Today</h2>
                 <p>Bookings cancelled today by branch</p>
               </div>
               <button className="btn-expand" onClick={() => handleExpandSection('cancellations')} title="View Details">
@@ -717,9 +805,13 @@ const DailyReports = () => {
           </div>
 
           {/* 6. Quick Insights */}
-          <div className="chart-card">
+          <div
+            className={`chart-card${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-insights') ? ' snap-selected' : ''}`}
+            ref={el => { cardRefs.current['chart-insights'] = el; }}
+            onClick={() => snapshotMode && toggleCardSelect('chart-insights')}
+          >
             <div className="chart-header">
-              <h2>6️⃣ Quick Insights</h2>
+              <h2>Quick Insights</h2>
               <p>Today's performance summary</p>
             </div>
             <div className="insights-list">
@@ -831,6 +923,26 @@ const DailyReports = () => {
             </div>
           </div>
         )}
+        {/* Snapshot floating bar */}
+        {snapshotMode && (
+          <div className="snapshot-bar">
+            <span className="snapshot-bar-info">
+              <FiCamera size={15} />
+              {selectedCards.size === 0 ? 'Click cards to select' : `${selectedCards.size} card${selectedCards.size > 1 ? 's' : ''} selected`}
+            </span>
+            <button className="snapshot-bar-btn outline" onClick={selectAll}>Select all</button>
+            <button
+              className="snapshot-bar-btn primary"
+              disabled={selectedCards.size === 0 || downloading}
+              onClick={downloadSelected}
+            >
+              <FiDownload size={14} />
+              {downloading ? 'Saving…' : 'Download PNG'}
+            </button>
+            <button className="snapshot-bar-btn cancel" onClick={clearSelection}><FiX size={14} /></button>
+          </div>
+        )}
+
       </main>
     </>
   );

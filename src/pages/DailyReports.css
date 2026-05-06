@@ -835,3 +835,89 @@ body.sidebar-collapsed .daily-reports-container {
     font-size: 10px;
   }
 }
+
+/* ── Snapshot Selection ───────────────────────────────────────── */
+.snap-selectable {
+  cursor: pointer;
+  position: relative;
+  transition: outline 0.15s, box-shadow 0.15s;
+}
+.snap-selectable:hover {
+  outline: 2px dashed #2563eb;
+  box-shadow: 0 0 0 4px rgba(37,99,235,0.08);
+}
+.snap-selected {
+  outline: 2px solid #1e40af !important;
+  box-shadow: 0 0 0 4px rgba(30,64,175,0.15) !important;
+}
+.snap-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid #1e40af;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e40af;
+  z-index: 10;
+}
+.snap-selected .snap-check {
+  background: #1e40af;
+  color: #fff;
+}
+
+/* Floating snapshot bar */
+.snapshot-bar {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1e293b;
+  color: #f1f5f9;
+  padding: 12px 20px;
+  border-radius: 40px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  z-index: 1000;
+  white-space: nowrap;
+}
+.snapshot-bar-info {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+.snapshot-bar-btn {
+  border: none;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: opacity 0.15s;
+}
+.snapshot-bar-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.snapshot-bar-btn.outline  { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
+.snapshot-bar-btn.outline:hover:not(:disabled) { background: #334155; }
+.snapshot-bar-btn.primary  { background: #2563eb; color: #fff; }
+.snapshot-bar-btn.primary:hover:not(:disabled) { background: #1e40af; }
+.snapshot-bar-btn.cancel   { background: #374151; color: #9ca3af; padding: 6px 10px; }
+.snapshot-bar-btn.cancel:hover { background: #4b5563; }
+
+/* Camera button active state */
+.btn-icon-primary.active {
+  background: #1e40af;
+  color: #fff;
+}

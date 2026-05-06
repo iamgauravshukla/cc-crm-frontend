@@ -2609,6 +2609,62 @@ thead {
   background: var(--bg-tertiary);
 }
 
+.card-header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.card-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  color: var(--text-secondary);
+}
+
+.card-edit-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+.card-snap-btn:hover {
+  background: #d1fae5;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+
+.dark .card-action-btn {
+  background: var(--bg-tertiary);
+  border-color: var(--border-primary);
+  color: var(--text-secondary);
+}
+
+.dark .card-edit-btn:hover {
+  background: #1e3a8a;
+  border-color: #93c5fd;
+  color: #93c5fd;
+}
+
+.dark .card-snap-btn:hover {
+  background: #064e3b;
+  border-color: #6ee7b7;
+  color: #6ee7b7;
+}
+
 .card-header-left h3 {
   margin: 0 0 5px 0;
   color: var(--text-primary);
