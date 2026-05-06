@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch } from 'react-icons/fi';
 import { getOldBookings } from '../services/api';
 import Sidebar from '../components/Sidebar';
@@ -47,6 +47,7 @@ function OldBookings() {
   const [builderField, setBuilderField] = useState('');
   const [builderOperator, setBuilderOperator] = useState('is');
   const [builderValue, setBuilderValue] = useState('');
+  const [builderValues, setBuilderValues] = useState([]); // multi-select
   const [builderDateFrom, setBuilderDateFrom] = useState('');
   const [builderDateTo, setBuilderDateTo] = useState('');
   const [editingFilterId, setEditingFilterId] = useState(null);
@@ -66,6 +67,8 @@ function OldBookings() {
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateError, setUpdateError] = useState('');
   const [updateSuccess, setUpdateSuccess] = useState('');
+  // Track which rows have in-flight validation updates
+  const [validationUpdating, setValidationUpdating] = useState({});
 
   const limit = 50;
 
@@ -210,10 +213,10 @@ function OldBookings() {
 
   // ── Quick filter system ────────────────────────────────────────────────────
   const FILTER_FIELDS = [
-    { key: 'branch',          fieldLabel: 'Branch',           type: 'select',     options: branches.filter(b => b !== 'All') },
-    { key: 'status',          fieldLabel: 'Status',           type: 'select',     options: bookingStatuses.filter(s => s !== 'All') },
-    { key: 'agent',           fieldLabel: 'Agent',            type: 'select',     options: agents },
-    { key: 'gender',          fieldLabel: 'Gender',           type: 'select',     options: ['Male', 'Female'] },
+    { key: 'branch',          fieldLabel: 'Branch',           type: 'select',     multiSelect: true,  options: branches.filter(b => b !== 'All') },
+    { key: 'status',          fieldLabel: 'Status',           type: 'select',     multiSelect: true,  options: bookingStatuses.filter(s => s !== 'All') },
+    { key: 'agent',           fieldLabel: 'Agent',            type: 'select',     multiSelect: true,  options: agents },
+    { key: 'gender',          fieldLabel: 'Gender',           type: 'select',     multiSelect: false, options: ['Male', 'Female'] },
     {
       key: 'createdDate', fieldLabel: 'Booking Created', type: 'datepreset',
       options: [
@@ -260,31 +263,50 @@ function OldBookings() {
     setBuilderField('');
     setBuilderOperator('is');
     setBuilderValue('');
+    setBuilderValues([]);
     setBuilderDateFrom('');
     setBuilderDateTo('');
   };
 
+  const isMultiSelect = (key) => !!getFieldConfig(key)?.multiSelect;
+
+  const toggleMultiValue = (opt) => {
+    setBuilderValues(prev =>
+      prev.includes(opt) ? prev.filter(v => v !== opt) : [...prev, opt]
+    );
+  };
+
   const canApplyFilter = () => {
-    if (!builderField || !builderValue) return false;
+    if (!builderField || !builderValue && builderValues.length === 0) return false;
+    const cfg = getFieldConfig(builderField);
+    if (cfg?.multiSelect) return builderValues.length > 0;
+    if (!builderValue) return false;
     if (builderValue === 'custom' && (!builderDateFrom || !builderDateTo)) return false;
     return true;
   };
 
   const applyFilter = () => {
     const config = getFieldConfig(builderField);
-    let displayValue = builderValue;
-    if (config?.type === 'datepreset') {
+    const multi = config?.multiSelect;
+    let displayValue;
+    if (multi) {
+      const label = builderValues.join(', ');
+      displayValue = builderOperator === 'is not' ? `≠ ${label}` : label;
+    } else if (config?.type === 'datepreset') {
       if (builderValue === 'custom') displayValue = `${builderDateFrom} – ${builderDateTo}`;
       else displayValue = config.options.find(o => o.value === builderValue)?.label || builderValue;
     } else if (builderOperator === 'is not') {
       displayValue = `≠ ${builderValue}`;
+    } else {
+      displayValue = builderValue;
     }
     const newFilter = {
       id: editingFilterId || Date.now().toString(),
       field: builderField,
       fieldLabel: config?.fieldLabel || builderField,
       operator: builderOperator,
-      value: builderValue,
+      value: multi ? builderValues.join(',') : builderValue,
+      values: multi ? builderValues : undefined,
       dateFrom: builderDateFrom,
       dateTo: builderDateTo,
       displayValue,
@@ -306,7 +328,14 @@ function OldBookings() {
     setEditingFilterId(filter.id);
     setBuilderField(filter.field);
     setBuilderOperator(filter.operator);
-    setBuilderValue(filter.value);
+    const cfg = getFieldConfig(filter.field);
+    if (cfg?.multiSelect) {
+      setBuilderValues(filter.values || (filter.value ? filter.value.split(',') : []));
+      setBuilderValue('');
+    } else {
+      setBuilderValue(filter.value);
+      setBuilderValues([]);
+    }
     setBuilderDateFrom(filter.dateFrom || '');
     setBuilderDateTo(filter.dateTo || '');
     setShowBuilder(true);
@@ -398,6 +427,43 @@ function OldBookings() {
     setUpdateError('');
     setUpdateSuccess('');
   };
+
+  // Toggle cancel_validation or underage_validation for a single booking row (Admin only)
+  const handleValidationToggle = useCallback(async (booking, field) => {
+    const key = `${booking.rowNumber}-${field}`;
+    setValidationUpdating(prev => ({ ...prev, [key]: true }));
+
+    const newVal = !booking[field];
+    const body = {
+      cancelValidation:   field === 'cancelValidation'   ? newVal : booking.cancelValidation,
+      underageValidation: field === 'underageValidation' ? newVal : booking.underageValidation,
+    };
+
+    try {
+      const apiBase = process.env.REACT_APP_API_URL || 'https://cc-crm-backend-production.up.railway.app/api';
+      const res = await fetch(`${apiBase}/bookings/${booking.rowNumber}/validation`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        console.error('Validation update failed:', d.error);
+      } else {
+        // Optimistically update local state so UI responds instantly
+        setBookings(prev => prev.map(b =>
+          b.rowNumber === booking.rowNumber ? { ...b, [field]: newVal } : b
+        ));
+      }
+    } catch (err) {
+      console.error('Validation toggle error:', err);
+    } finally {
+      setValidationUpdating(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+  }, []);
 
   return (
     <>
@@ -509,17 +575,32 @@ function OldBookings() {
                       </div>
                     </div>
                     <div className="qf-builder-row">
-                      <label>Value</label>
+                      <label>
+                        Value
+                        {isMultiSelect(builderField) && builderValues.length > 0 && (
+                          <span className="qf-multi-hint"> · {builderValues.length} selected</span>
+                        )}
+                      </label>
                       <div className="qf-value-chips">
-                        {getFieldConfig(builderField).options.map(opt => (
-                          <button
-                            key={opt}
-                            className={`qf-value-chip${builderValue === opt ? ' selected' : ''}`}
-                            onClick={() => setBuilderValue(opt)}
-                          >
-                            {opt}
-                          </button>
-                        ))}
+                        {getFieldConfig(builderField).options.map(opt => {
+                          const selected = isMultiSelect(builderField)
+                            ? builderValues.includes(opt)
+                            : builderValue === opt;
+                          return (
+                            <button
+                              key={opt}
+                              className={`qf-value-chip${selected ? ' selected' : ''}`}
+                              onClick={() =>
+                                isMultiSelect(builderField)
+                                  ? toggleMultiValue(opt)
+                                  : setBuilderValue(opt)
+                              }
+                            >
+                              {isMultiSelect(builderField) && selected && <span className="qf-chip-tick">✓ </span>}
+                              {opt}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </>
@@ -607,6 +688,8 @@ function OldBookings() {
                       <th>Companion Age</th>
                       <th>Companion Gender</th>
                       <th>Companion Freebie</th>
+                      {user?.role === 'Admin' && <th className="validation-col-header">Cancel Validation</th>}
+                      {user?.role === 'Admin' && <th className="validation-col-header">Underage Validation</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -662,6 +745,32 @@ function OldBookings() {
                         <td>{booking.companionAge || '-'}</td>
                         <td>{booking.companionGender || '-'}</td>
                         <td>{booking.companionFreebie || '-'}</td>
+                        {user?.role === 'Admin' && (
+                          <td className="validation-cell">
+                            <label className="validation-checkbox-wrap" title="Cancel Validation: exclude this arrival from agent stats">
+                              <input
+                                type="checkbox"
+                                checked={!!booking.cancelValidation}
+                                disabled={!!validationUpdating[`${booking.rowNumber}-cancelValidation`]}
+                                onChange={() => handleValidationToggle(booking, 'cancelValidation')}
+                              />
+                              {booking.cancelValidation && <span className="val-badge val-cancel">Excluded</span>}
+                            </label>
+                          </td>
+                        )}
+                        {user?.role === 'Admin' && (
+                          <td className="validation-cell">
+                            <label className="validation-checkbox-wrap" title="Underage Validation: exclude this arrival from agent stats">
+                              <input
+                                type="checkbox"
+                                checked={!!booking.underageValidation}
+                                disabled={!!validationUpdating[`${booking.rowNumber}-underageValidation`]}
+                                onChange={() => handleValidationToggle(booking, 'underageValidation')}
+                              />
+                              {booking.underageValidation && <span className="val-badge val-underage">Excluded</span>}
+                            </label>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

@@ -13,6 +13,7 @@ const SALES_FILTER_FIELDS = [
     key: 'branch',
     fieldLabel: 'Branch',
     type: 'select',
+    multiSelect: true,
     options: [
       'AI SKIN', 'CENTRIS', 'DNA MANILA', 'GENEVA', 'GLORIETTA',
       'HERA', 'LIONESSE', 'LUMIA', 'PARIS', 'SM NORTH',

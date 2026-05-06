@@ -4704,3 +4704,114 @@ thead {
 .dark .ap-crb-red        { background: rgba(252,165,165,0.15); color: #fca5a5; }
 .dark .ap-crb-avg        { background: rgba(147,197,253,0.12); color: #93c5fd; }
 
+/* ─────────────────────────────────────────────
+   Validation flag columns (Cancel / Underage)
+   ───────────────────────────────────────────── */
+.validation-col-header {
+  background: #1e3a8a !important;
+  font-size: 11px !important;
+  white-space: nowrap;
+  min-width: 130px;
+}
+
+.validation-cell {
+  text-align: center;
+  vertical-align: middle;
+  padding: 6px 10px !important;
+}
+
+.validation-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.validation-checkbox-wrap input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #1e40af;
+  flex-shrink: 0;
+}
+
+.validation-checkbox-wrap input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.val-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.val-cancel   { background: rgba(239,68,68,0.12);  color: #b91c1c; }
+.val-underage { background: rgba(245,158,11,0.12); color: #b45309; }
+
+.dark .validation-col-header { background: #1e3a8a !important; }
+.dark .val-cancel   { background: rgba(252,165,165,0.15); color: #fca5a5; }
+.dark .val-underage { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+
+/* ─────────────────────────────────────────────
+   Master Bookings — Validation Checkboxes
+   ───────────────────────────────────────────── */
+.validation-col-header {
+  background: #1e3a8a !important;
+  font-size: 11px !important;
+  text-align: center !important;
+  white-space: nowrap;
+  min-width: 90px;
+}
+.validation-cell {
+  text-align: center;
+  vertical-align: middle;
+  padding: 6px 8px !important;
+}
+.validation-checkbox-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+}
+.validation-checkbox-wrap input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #ef4444;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.validation-checkbox-wrap input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.val-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 8px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.val-cancel   { background: rgba(239,68,68,0.12); color: #dc2626; }
+.val-underage { background: rgba(245,158,11,0.12); color: #b45309; }
+
+/* Dark mode */
+.dark .validation-col-header { background: #1e3a8a !important; }
+.dark .val-cancel   { background: rgba(252,165,165,0.15); color: #fca5a5; }
+.dark .val-underage { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+
+
+/* Multi-select filter hints */
+.qf-multi-hint {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1e40af;
+  margin-left: 4px;
+}
+.dark .qf-multi-hint { color: #93c5fd; }
+.qf-chip-tick { font-size: 10px; opacity: 0.85; }

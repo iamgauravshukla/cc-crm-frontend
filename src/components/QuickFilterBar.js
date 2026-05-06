@@ -9,11 +9,15 @@
  *   resultLabel   – optional string suffix e.g. "bookings" (default: "results")
  *
  * Field config shape:
- *   { key, fieldLabel, type: 'select' | 'datepreset' | 'daterange', options }
+ *   { key, fieldLabel, type: 'select' | 'datepreset' | 'daterange', options, multiSelect? }
  *
- *   'select'      – options: string[]
+ *   'select'      – options: string[]; set multiSelect:true to allow multiple values
  *   'datepreset'  – options: { value, label }[]
  *   'daterange'   – no options; always shows from/to date pickers
+ *
+ * Multi-select filter shape:
+ *   { ..., value: ['HERA','LUMIA'], displayValue: 'HERA, LUMIA' }
+ *   Backend receives comma-separated: branch=HERA,LUMIA
  */
 
 import React, { useState } from 'react';
@@ -26,13 +30,15 @@ export default function QuickFilterBar({
   resultCount,
   resultLabel = 'results',
 }) {
-  const [showBuilder, setShowBuilder]       = useState(false);
-  const [editingId, setEditingId]           = useState(null);
-  const [builderField, setBuilderField]     = useState('');
+  const [showBuilder, setShowBuilder]         = useState(false);
+  const [editingId, setEditingId]             = useState(null);
+  const [builderField, setBuilderField]       = useState('');
   const [builderOperator, setBuilderOperator] = useState('is');
-  const [builderValue, setBuilderValue]     = useState('');
+  // For multi-select: array of strings. For single: string.
+  const [builderValue, setBuilderValue]       = useState('');
+  const [builderValues, setBuilderValues]     = useState([]); // multi-select
   const [builderDateFrom, setBuilderDateFrom] = useState('');
-  const [builderDateTo, setBuilderDateTo]   = useState('');
+  const [builderDateTo, setBuilderDateTo]     = useState('');
 
   const getConfig = (key) => fields.find(f => f.key === key);
 
@@ -40,6 +46,7 @@ export default function QuickFilterBar({
     setBuilderField('');
     setBuilderOperator('is');
     setBuilderValue('');
+    setBuilderValues([]);
     setBuilderDateFrom('');
     setBuilderDateTo('');
   };
@@ -48,6 +55,14 @@ export default function QuickFilterBar({
     setShowBuilder(false);
     setEditingId(null);
     resetBuilder();
+  };
+
+  const isMultiSelect = (key) => !!getConfig(key)?.multiSelect;
+
+  const toggleMultiValue = (opt) => {
+    setBuilderValues(prev =>
+      prev.includes(opt) ? prev.filter(v => v !== opt) : [...prev, opt]
+    );
   };
 
   const canApply = () => {
@@ -59,28 +74,35 @@ export default function QuickFilterBar({
       if (builderValue === 'custom') return !!(builderDateFrom && builderDateTo);
       return true;
     }
+    if (cfg?.multiSelect) return builderValues.length > 0;
     return !!builderValue;
   };
 
-  const buildDisplayValue = (cfg, value, operator, dateFrom, dateTo) => {
+  const buildDisplayValue = (cfg, value, operator, dateFrom, dateTo, values) => {
     if (cfg?.type === 'daterange') return `${dateFrom} – ${dateTo}`;
     if (cfg?.type === 'datepreset') {
       if (value === 'custom') return `${dateFrom} – ${dateTo}`;
       return cfg.options.find(o => o.value === value)?.label || value;
+    }
+    if (cfg?.multiSelect) {
+      const label = values.join(', ');
+      return operator === 'is not' ? `≠ ${label}` : label;
     }
     return operator === 'is not' ? `≠ ${value}` : value;
   };
 
   const applyFilter = () => {
     const cfg = getConfig(builderField);
-    const displayValue = buildDisplayValue(cfg, builderValue, builderOperator, builderDateFrom, builderDateTo);
+    const multi = cfg?.multiSelect;
+    const displayValue = buildDisplayValue(cfg, builderValue, builderOperator, builderDateFrom, builderDateTo, builderValues);
 
     const newFilter = {
       id:           editingId || Date.now().toString(),
       field:        builderField,
       fieldLabel:   cfg?.fieldLabel || builderField,
       operator:     builderOperator,
-      value:        cfg?.type === 'daterange' ? 'custom' : builderValue,
+      value:        cfg?.type === 'daterange' ? 'custom' : (multi ? builderValues.join(',') : builderValue),
+      values:       multi ? builderValues : undefined,
       dateFrom:     builderDateFrom,
       dateTo:       builderDateTo,
       displayValue,
@@ -101,7 +123,14 @@ export default function QuickFilterBar({
     setEditingId(filter.id);
     setBuilderField(filter.field);
     setBuilderOperator(filter.operator || 'is');
-    setBuilderValue(filter.value === 'custom' ? 'custom' : filter.value);
+    const cfg = getConfig(filter.field);
+    if (cfg?.multiSelect) {
+      setBuilderValues(filter.values || (filter.value ? filter.value.split(',') : []));
+      setBuilderValue('');
+    } else {
+      setBuilderValue(filter.value === 'custom' ? 'custom' : filter.value);
+      setBuilderValues([]);
+    }
     setBuilderDateFrom(filter.dateFrom || '');
     setBuilderDateTo(filter.dateTo || '');
     setShowBuilder(true);
@@ -177,6 +206,7 @@ export default function QuickFilterBar({
                 onChange={e => {
                   setBuilderField(e.target.value);
                   setBuilderValue('');
+                  setBuilderValues([]);
                   setBuilderOperator('is');
                   setBuilderDateFrom('');
                   setBuilderDateTo('');
@@ -196,7 +226,7 @@ export default function QuickFilterBar({
               </select>
             </div>
 
-            {/* select-type field */}
+            {/* select-type field — single or multi */}
             {builderField && getConfig(builderField)?.type === 'select' && (
               <>
                 <div className="qf-builder-row">
@@ -212,15 +242,34 @@ export default function QuickFilterBar({
                   </div>
                 </div>
                 <div className="qf-builder-row">
-                  <label>Value</label>
+                  <label>
+                    Value
+                    {isMultiSelect(builderField) && builderValues.length > 0 && (
+                      <span className="qf-multi-hint"> · {builderValues.length} selected</span>
+                    )}
+                  </label>
                   <div className="qf-value-chips">
-                    {getConfig(builderField).options.map(opt => (
-                      <button
-                        key={opt}
-                        className={`qf-value-chip${builderValue === opt ? ' selected' : ''}`}
-                        onClick={() => setBuilderValue(opt)}
-                      >{opt}</button>
-                    ))}
+                    {getConfig(builderField).options.map(opt => {
+                      const selected = isMultiSelect(builderField)
+                        ? builderValues.includes(opt)
+                        : builderValue === opt;
+                      return (
+                        <button
+                          key={opt}
+                          className={`qf-value-chip${selected ? ' selected' : ''}`}
+                          onClick={() =>
+                            isMultiSelect(builderField)
+                              ? toggleMultiValue(opt)
+                              : setBuilderValue(opt)
+                          }
+                        >
+                          {isMultiSelect(builderField) && selected && (
+                            <span className="qf-chip-tick">✓ </span>
+                          )}
+                          {opt}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </>
@@ -278,3 +327,4 @@ export default function QuickFilterBar({
     </div>
   );
 }
+

@@ -32,6 +32,7 @@ const ANALYTICS_FILTER_FIELDS = [
     key: 'branch',
     fieldLabel: 'Branch',
     type: 'select',
+    multiSelect: true,
     options: BRANCHES.filter(b => b !== 'All'),
   },
   {

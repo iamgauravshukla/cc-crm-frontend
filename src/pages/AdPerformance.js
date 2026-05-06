@@ -29,6 +29,7 @@ function AdPerformance() {
       key: 'branch',
       fieldLabel: 'Wellness Center',
       type: 'select',
+      multiSelect: true,
       options: [
         'AI SKIN', 'CENTRIS', 'DNA MANILA', 'GENEVA', 'GLORIETTA',
         'HERA', 'LIONESSE', 'LUMIA', 'PARIS', 'SM NORTH',
