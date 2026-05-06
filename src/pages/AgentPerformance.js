@@ -3,64 +3,85 @@ import Chart from 'react-apexcharts';
 import api from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
+import QuickFilterBar from '../components/QuickFilterBar';
 import { useTheme } from '../context/ThemeContext';
-import { FiTrendingUp, FiDollarSign, FiUsers, FiAward, FiPercent, FiTarget, FiBarChart2, FiCalendar } from 'react-icons/fi';
+import { FiTrendingUp, FiDollarSign, FiUsers, FiAward, FiPercent, FiTarget, FiBarChart2 } from 'react-icons/fi';
 
 function AgentPerformance() {
   const [loading, setLoading] = useState(true);
   const [performanceData, setPerformanceData] = useState(null);
-  const [dateRange, setDateRange] = useState('30'); // days
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
+  const [activeFilters, setActiveFilters] = useState([
+    { id: 'qf-date-default', field: 'dateRange', fieldLabel: 'Date Range', operator: 'is', value: '30', dateFrom: '', dateTo: '', displayValue: 'Last 30 Days' },
+  ]);
   const [sortBy, setSortBy] = useState('revenue');
   const [sortOrder, setSortOrder] = useState('desc');
-  const [selectedAgent, setSelectedAgent] = useState('All');
+
+  // Derived from activeFilters
+  const dateFilter   = activeFilters.find(f => f.field === 'dateRange');
+  const agentFilter  = activeFilters.find(f => f.field === 'agent');
+  const dateValue    = dateFilter?.value || '30';
+  const customStart  = dateFilter?.dateFrom || '';
+  const customEnd    = dateFilter?.dateTo   || '';
+  const selectedAgent = agentFilter?.value || 'All';
+
+  // Dynamic filter fields — agent options populated once data loads
+  const agentFilterFields = [
+    {
+      key: 'dateRange',
+      fieldLabel: 'Date Range',
+      type: 'datepreset',
+      options: [
+        { value: '7',      label: 'Last 7 Days' },
+        { value: '15',     label: 'Last 15 Days' },
+        { value: '30',     label: 'Last 30 Days' },
+        { value: '60',     label: 'Last 60 Days' },
+        { value: '90',     label: 'Last 90 Days' },
+        { value: 'custom', label: 'Custom Range' },
+      ],
+    },
+    {
+      key: 'agent',
+      fieldLabel: 'Agent',
+      type: 'select',
+      options: performanceData ? performanceData.agents.map(a => a.name).sort() : [],
+    },
+  ];
   
   // Use theme context for reactive theme detection
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
 
   const fetchPerformanceData = useCallback(async () => {
-    // Don't fetch if custom date range is selected but dates aren't both filled
-    if (dateRange === 'custom' && (!customStartDate || !customEndDate)) {
-      return;
-    }
-
+    if (dateValue === 'custom' && (!customStart || !customEnd)) return;
     try {
       setLoading(true);
       const params = {};
-      
-      if (dateRange === 'custom' && customStartDate && customEndDate) {
-        params.startDate = customStartDate;
-        params.endDate = customEndDate;
+      if (dateValue === 'custom' && customStart && customEnd) {
+        params.startDate = customStart;
+        params.endDate   = customEnd;
       } else {
-        params.days = dateRange;
+        params.days = dateValue;
       }
-      
       const response = await api.get('/analytics/agent-performance', { params });
-      if (response.data.success) {
-        setPerformanceData(response.data.data);
-      }
+      if (response.data.success) setPerformanceData(response.data.data);
     } catch (error) {
       console.error('Error fetching agent performance:', error);
     } finally {
       setLoading(false);
     }
-  }, [dateRange, customStartDate, customEndDate]);
+  }, [dateValue, customStart, customEnd]);
 
   useEffect(() => {
     fetchPerformanceData();
   }, [fetchPerformanceData]);
 
-  const getAgentList = () => {
-    if (!performanceData) return [];
-    return performanceData.agents.map(a => a.name).sort();
-  };
+  const PLACEHOLDER_AGENTS = new Set(['no data', 'unknown', 'n/a', '-', '', 'none', 'unassigned']);
 
   const getFilteredAgents = () => {
     if (!performanceData) return [];
-    if (selectedAgent === 'All') return performanceData.agents;
-    return performanceData.agents.filter(a => a.name === selectedAgent);
+    const real = performanceData.agents.filter(a => !PLACEHOLDER_AGENTS.has((a.name || '').toLowerCase().trim()));
+    if (selectedAgent === 'All') return real;
+    return real.filter(a => a.name === selectedAgent);
   };
 
   const getSortedAgents = () => {
@@ -83,209 +104,226 @@ function AgentPerformance() {
     }
   };
 
+  // Compute once for all charts
+  const chartAgents = getFilteredAgents();
+  const avgConv = chartAgents.length
+    ? (chartAgents.reduce((s, a) => s + (a.conversionRate ?? 0), 0) / chartAgents.length).toFixed(1)
+    : 0;
+  const avgArr = chartAgents.length
+    ? (chartAgents.reduce((s, a) => s + (a.arrivalRate ?? 0), 0) / chartAgents.length).toFixed(1)
+    : 0;
+  const topRevAgent = chartAgents.length
+    ? [...chartAgents].sort((a, b) => b.revenue - a.revenue)[0]
+    : null;
+
+  // Per-bar colors for rate charts: green ≥50%, amber ≥30%, red <30%
+  const convColors = chartAgents.map(a =>
+    (a.conversionRate ?? 0) >= 50 ? '#10B981' : (a.conversionRate ?? 0) >= 30 ? '#F59E0B' : '#EF4444'
+  );
+  const arrColors = chartAgents.map(a =>
+    (a.arrivalRate ?? 0) >= 50 ? '#10B981' : (a.arrivalRate ?? 0) >= 30 ? '#F59E0B' : '#EF4444'
+  );
+
+  const axisLabel = isDarkMode ? '#cbd5e1' : '#64748b';
+  const gridLine  = isDarkMode ? '#334155' : '#f0f0f0';
+
+  // ── Chart 1: Bookings (bars) + Revenue (line), dual Y-axis ──
   const comparisonChartOptions = performanceData ? {
-    theme: {
-      mode: isDarkMode ? 'dark' : 'light'
-    },
-    chart: { 
-      type: 'bar', 
-      toolbar: { show: true },
-      foreColor: isDarkMode ? '#cbd5e1' : '#64748b',
-      background: 'transparent'
+    theme: { mode: isDarkMode ? 'dark' : 'light' },
+    chart: {
+      type: 'bar',
+      toolbar: { show: true, tools: { download: true, selection: false, zoom: false, zoomin: false, zoomout: false, pan: false, reset: false } },
+      foreColor: axisLabel,
+      background: 'transparent',
+      fontFamily: 'inherit',
     },
     plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '55%',
-        endingShape: 'rounded'
+      bar: { columnWidth: '48%', borderRadius: 4, borderRadiusApplication: 'end' },
+    },
+    dataLabels: { enabled: false },
+    stroke: { width: [0, 3], curve: 'smooth' },
+    colors: ['#1e40af', '#10B981'],
+    fill: {
+      type: ['gradient', 'solid'],
+      gradient: {
+        shade: isDarkMode ? 'dark' : 'light',
+        type: 'vertical',
+        shadeIntensity: 0.2,
+        opacityFrom: 1,
+        opacityTo: 0.8,
       },
     },
-    dataLabels: { 
-      enabled: false,
-      style: {
-        colors: [isDarkMode ? '#f1f5f9' : '#1f2937']
-      }
-    },
-    stroke: { show: true, width: 2, colors: ['transparent'] },
     xaxis: {
-      categories: getFilteredAgents().map(a => a.name),
-      labels: { 
-        rotate: -45,
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b'
-        }
-      }
+      categories: chartAgents.map(a => a.name),
+      labels: { rotate: -35, style: { colors: axisLabel, fontSize: '12px' } },
+      axisBorder: { color: gridLine },
+      axisTicks: { color: gridLine },
     },
-    yaxis: {
-      title: { 
-        text: 'Bookings & Revenue',
-        style: {
-          color: isDarkMode ? '#cbd5e1' : '#64748b'
-        }
+    yaxis: [
+      {
+        seriesName: 'Bookings',
+        title: { text: 'Bookings', style: { color: '#1e40af', fontWeight: 600, fontSize: '12px' } },
+        labels: { style: { colors: axisLabel } },
+        min: 0,
       },
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b'
-        }
-      }
-    },
-    fill: { opacity: 1 },
+      {
+        seriesName: 'Revenue (₱)',
+        opposite: true,
+        title: { text: 'Revenue (₱)', style: { color: '#10B981', fontWeight: 600, fontSize: '12px' } },
+        labels: {
+          formatter: (v) => v >= 1000 ? '₱' + (v / 1000).toFixed(0) + 'k' : '₱' + v,
+          style: { colors: axisLabel },
+        },
+        min: 0,
+      },
+    ],
     tooltip: {
+      shared: true,
+      intersect: false,
       theme: isDarkMode ? 'dark' : 'light',
-      y: {
-        formatter: function (val, opts) {
-          if (opts.seriesIndex === 1) {
-            return '₱' + val.toLocaleString();
-          }
-          return val;
-        }
-      }
+      y: { formatter: (val, opts) => opts.seriesIndex === 1 ? '₱' + val.toLocaleString() : val + ' bookings' },
     },
-    colors: ['#2563EB', '#10B981'],
-    legend: { 
+    legend: {
       position: 'top',
-      labels: {
-        colors: isDarkMode ? '#cbd5e1' : '#64748b'
-      }
+      horizontalAlign: 'right',
+      offsetY: -8,
+      labels: { colors: axisLabel },
+      markers: { radius: 3 },
     },
     grid: {
-      borderColor: isDarkMode ? '#334155' : '#e5e7eb'
-    }
+      borderColor: gridLine,
+      strokeDashArray: 4,
+      xaxis: { lines: { show: false } },
+      yaxis: { lines: { show: true } },
+    },
+    markers: { size: [0, 5], strokeWidth: 2, hover: { size: 7 } },
   } : {};
 
   const comparisonChartSeries = performanceData ? [
-    {
-      name: 'Bookings',
-      data: getFilteredAgents().map(a => a.bookings)
-    },
-    {
-      name: 'Revenue',
-      data: getFilteredAgents().map(a => Math.round(a.revenue / 100)) // Scale down for visibility
-    }
+    { name: 'Bookings',    type: 'bar',  data: chartAgents.map(a => a.bookings) },
+    { name: 'Revenue (₱)', type: 'line', data: chartAgents.map(a => a.revenue) },
   ] : [];
 
+  // ── Chart 2: Conversion Rate — distributed color per bar ──
   const conversionChartOptions = performanceData ? {
-    theme: {
-      mode: isDarkMode ? 'dark' : 'light'
-    },
-    chart: { 
-      type: 'bar', 
+    theme: { mode: isDarkMode ? 'dark' : 'light' },
+    chart: {
+      type: 'bar',
       toolbar: { show: false },
-      foreColor: isDarkMode ? '#cbd5e1' : '#64748b',
-      background: 'transparent'
+      foreColor: axisLabel,
+      background: 'transparent',
+      fontFamily: 'inherit',
     },
     plotOptions: {
-      bar: {
-        horizontal: true,
-        dataLabels: { position: 'top' }
-      }
+      bar: { horizontal: true, distributed: true, dataLabels: { position: 'top' }, borderRadius: 4 },
     },
+    colors: convColors.length ? convColors : ['#10B981'],
     dataLabels: {
       enabled: true,
-      formatter: function (val) {
-        return val.toFixed(1) + '%';
-      },
+      formatter: (val) => val.toFixed(1) + '%',
       offsetX: -6,
-      style: { 
-        fontSize: '12px', 
-        colors: ['#fff'] 
-      }
+      style: { fontSize: '12px', fontWeight: 600, colors: ['#fff'] },
     },
     xaxis: {
-      categories: getFilteredAgents().map(a => a.name),
+      categories: chartAgents.map(a => a.name),
       max: 100,
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b'
-        }
-      }
+      labels: { formatter: (v) => v + '%', style: { colors: axisLabel, fontSize: '12px' } },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
     },
     yaxis: {
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b'
-        }
-      }
+      labels: { style: { colors: axisLabel, fontSize: '13px' } },
     },
-    colors: ['#8B5CF6'],
-    grid: { 
-      borderColor: isDarkMode ? '#334155' : '#e5e7eb'
+    annotations: {
+      xaxis: [{
+        x: 50,
+        borderColor: isDarkMode ? '#64748b' : '#94a3b8',
+        strokeDashArray: 5,
+        label: {
+          text: 'Target 50%',
+          borderColor: 'transparent',
+          style: { color: axisLabel, fontSize: '11px', background: 'transparent' },
+        },
+      }],
     },
+    grid: {
+      borderColor: gridLine,
+      strokeDashArray: 4,
+      xaxis: { lines: { show: true } },
+      yaxis: { lines: { show: false } },
+      padding: { left: 0, right: 10 },
+    },
+    legend: { show: false },
     tooltip: {
-      theme: isDarkMode ? 'dark' : 'light'
+      theme: isDarkMode ? 'dark' : 'light',
+      y: { formatter: (val) => val.toFixed(1) + '%' },
     },
-    legend: {
-      labels: {
-        colors: isDarkMode ? '#cbd5e1' : '#64748b'
-      }
-    }
   } : {};
 
   const conversionChartSeries = performanceData ? [{
     name: 'Conversion Rate',
-    data: getFilteredAgents().map(a => a.conversionRate ?? 0)
+    data: chartAgents.map(a => parseFloat((a.conversionRate ?? 0).toFixed(2))),
   }] : [];
 
+  // ── Chart 3: Arrival Rate — distributed color per bar ──
   const arrivalChartOptions = performanceData ? {
-    theme: {
-      mode: isDarkMode ? 'dark' : 'light'
-    },
-    chart: { 
-      type: 'bar', 
+    theme: { mode: isDarkMode ? 'dark' : 'light' },
+    chart: {
+      type: 'bar',
       toolbar: { show: false },
-      foreColor: isDarkMode ? '#cbd5e1' : '#64748b',
-      background: 'transparent'
+      foreColor: axisLabel,
+      background: 'transparent',
+      fontFamily: 'inherit',
     },
     plotOptions: {
-      bar: {
-        horizontal: true,
-        dataLabels: { position: 'top' }
-      }
+      bar: { horizontal: true, distributed: true, dataLabels: { position: 'top' }, borderRadius: 4 },
     },
+    colors: arrColors.length ? arrColors : ['#10B981'],
     dataLabels: {
       enabled: true,
-      formatter: function (val) {
-        return val.toFixed(1) + '%';
-      },
+      formatter: (val) => val.toFixed(1) + '%',
       offsetX: -6,
-      style: { 
-        fontSize: '12px', 
-        colors: ['#fff'] 
-      }
+      style: { fontSize: '12px', fontWeight: 600, colors: ['#fff'] },
     },
     xaxis: {
-      categories: getFilteredAgents().map(a => a.name),
+      categories: chartAgents.map(a => a.name),
       max: 100,
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b'
-        }
-      }
+      labels: { formatter: (v) => v + '%', style: { colors: axisLabel, fontSize: '12px' } },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
     },
     yaxis: {
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b'
-        }
-      }
+      labels: { style: { colors: axisLabel, fontSize: '13px' } },
     },
-    colors: ['#10B981'],
-    grid: { 
-      borderColor: isDarkMode ? '#334155' : '#e5e7eb'
+    annotations: {
+      xaxis: [{
+        x: 40,
+        borderColor: isDarkMode ? '#64748b' : '#94a3b8',
+        strokeDashArray: 5,
+        label: {
+          text: 'Target 40%',
+          borderColor: 'transparent',
+          style: { color: axisLabel, fontSize: '11px', background: 'transparent' },
+        },
+      }],
     },
+    grid: {
+      borderColor: gridLine,
+      strokeDashArray: 4,
+      xaxis: { lines: { show: true } },
+      yaxis: { lines: { show: false } },
+      padding: { left: 0, right: 10 },
+    },
+    legend: { show: false },
     tooltip: {
-      theme: isDarkMode ? 'dark' : 'light'
+      theme: isDarkMode ? 'dark' : 'light',
+      y: { formatter: (val) => val.toFixed(1) + '%' },
     },
-    legend: {
-      labels: {
-        colors: isDarkMode ? '#cbd5e1' : '#64748b'
-      }
-    }
   } : {};
 
   const arrivalChartSeries = performanceData ? [{
     name: 'Arrival Rate',
-    data: getFilteredAgents().map(a => a.arrivalRate ?? 0)
+    data: chartAgents.map(a => parseFloat((a.arrivalRate ?? 0).toFixed(2))),
   }] : [];
 
   return (
@@ -293,66 +331,28 @@ function AgentPerformance() {
       <Sidebar />
       <div className="main-content">
         <div className="page-container">
-          <div className="bookings-header">
-            <div className="header-left">
-              <h1><FiBarChart2 /> Agent Performance Report</h1>
-              <p className="page-subtitle">Detailed analysis of agent performance and metrics</p>
-            </div>
-            
-            <div className="header-right">
-              <div className="filters-section">
-                <div className="filter-group">
-                  <label><FiCalendar /> Date Range:</label>
-                  <select 
-                    value={dateRange} 
-                    onChange={(e) => setDateRange(e.target.value)}
-                    className="filter-select"
-                  >
-                    <option value="7">Last 7 Days</option>
-                    <option value="15">Last 15 Days</option>
-                    <option value="30">Last 30 Days</option>
-                    <option value="60">Last 60 Days</option>
-                    <option value="90">Last 90 Days</option>
-                    <option value="custom">Custom Range</option>
-                  </select>
-                </div>
-                {dateRange === 'custom' && (
-                  <div className="custom-date-range">
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      max={customEndDate || new Date().toISOString().split('T')[0]}
-                      className="date-input"
-                      placeholder="Start Date"
-                    />
-                    <span className="date-separator">to</span>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      min={customStartDate}
-                      max={new Date().toISOString().split('T')[0]}
-                      className="date-input"
-                      placeholder="End Date"
-                    />
-                  </div>
-                )}
-                <div className="filter-group">
-                  <label><FiUsers /> Agent:</label>
-                  <select
-                    value={selectedAgent}
-                    onChange={(e) => setSelectedAgent(e.target.value)}
-                    className="filter-select"
-                  >
-                    <option value="All">All Agents</option>
-                    {getAgentList().map(name => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
-                </div>
+          {/* Page header */}
+          <div className="ap-page-header">
+            <div className="ap-title-row">
+              <div>
+                <h1 className="ap-title"><FiBarChart2 /> Agent Performance</h1>
+                <p className="page-subtitle">Detailed analysis of agent performance and metrics</p>
               </div>
+              {performanceData && (
+                <div className="ap-summary-pills">
+                  <span className="ap-pill ap-pill-blue"><FiUsers size={13}/> {performanceData.summary.totalAgents} Agents</span>
+                  <span className="ap-pill ap-pill-green"><FiDollarSign size={13}/> ₱{performanceData.summary.totalRevenue.toLocaleString()}</span>
+                  <span className="ap-pill ap-pill-purple"><FiPercent size={13}/> {performanceData.summary.avgConversion.toFixed(1)}% Avg Conv.</span>
+                </div>
+              )}
             </div>
+            <QuickFilterBar
+              fields={agentFilterFields}
+              activeFilters={activeFilters}
+              onChange={setActiveFilters}
+              resultCount={performanceData ? getFilteredAgents().length : undefined}
+              resultLabel="agents"
+            />
           </div>
 
           {loading ? (
@@ -402,6 +402,45 @@ function AgentPerformance() {
                 </div>
               </div>
 
+              {/* Top Performers Leaderboard */}
+              {getSortedAgents().length > 0 && (
+                <div className="ap-leaderboard-section">
+                  <h2 className="ap-leaderboard-title"><FiAward /> Top Performers</h2>
+                  <div className="ap-leaderboard">
+                    {getSortedAgents().slice(0, 3).map((agent, idx) => {
+                      const medals  = ['🥇', '🥈', '🥉'];
+                      const colors  = ['#f59e0b', '#94a3b8', '#cd7f32'];
+                      const heights = [120, 90, 75];
+                      return (
+                        <div key={agent.name} className={`ap-podium ap-podium-${idx + 1}`} style={{ order: idx === 0 ? 2 : idx === 1 ? 1 : 3 }}>
+                          <div className="ap-podium-card" style={{ borderTop: `3px solid ${colors[idx]}` }}>
+                            <div className="ap-podium-medal">{medals[idx]}</div>
+                            <div className="ap-podium-name">{agent.name}</div>
+                            <div className="ap-podium-stats">
+                              <div className="ap-podium-stat">
+                                <span className="ap-podium-val">₱{agent.revenue.toLocaleString()}</span>
+                                <span className="ap-podium-lbl">Revenue</span>
+                              </div>
+                              <div className="ap-podium-stat">
+                                <span className="ap-podium-val">{agent.bookings}</span>
+                                <span className="ap-podium-lbl">Bookings</span>
+                              </div>
+                              <div className="ap-podium-stat">
+                                <span className="ap-podium-val">{(agent.conversionRate ?? 0).toFixed(1)}%</span>
+                                <span className="ap-podium-lbl">Conv.</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="ap-podium-block" style={{ height: heights[idx], background: colors[idx] }}>
+                            <span className="ap-podium-rank">#{idx + 1}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Arrivals Averages Section */}
               <div className="analytics-card" style={{ marginBottom: '1.5rem' }}>
                 <div className="analytics-card-header">
@@ -433,53 +472,89 @@ function AgentPerformance() {
                 </div>
               </div>
 
-              {/* Comparison Charts */}
-              <div className="analytics-grid-single">
-                <div className="analytics-card">
-                  <div className="analytics-card-header">
-                    <h3><FiTrendingUp /> Bookings & Revenue Comparison</h3>
-                    <p>Compare performance across all agents</p>
+              {/* ── Full-width Bookings & Revenue Combo Chart ── */}
+              <div className="analytics-card ap-chart-full-card">
+                <div className="ap-chart-header">
+                  <div className="ap-chart-header-left">
+                    <div className="ap-chart-icon-wrap ap-ci-blue"><FiTrendingUp size={16} /></div>
+                    <div>
+                      <h3 className="ap-chart-title">Bookings &amp; Revenue Comparison</h3>
+                      <p className="ap-chart-subtitle">Bars = bookings count &nbsp;·&nbsp; Line = total revenue per agent</p>
+                    </div>
                   </div>
-                  <div className="analytics-card-body">
-                    <Chart
-                      options={comparisonChartOptions}
-                      series={comparisonChartSeries}
-                      type="bar"
-                      height={350}
-                    />
-                  </div>
+                  {topRevAgent && (
+                    <div className="ap-chart-header-badge">
+                      <span className="ap-chb-label">Top Earner</span>
+                      <span className="ap-chb-name">{topRevAgent.name}</span>
+                      <span className="ap-chb-val">₱{topRevAgent.revenue.toLocaleString()}</span>
+                    </div>
+                  )}
                 </div>
+                <div className="analytics-card-body">
+                  <Chart
+                    options={comparisonChartOptions}
+                    series={comparisonChartSeries}
+                    type="bar"
+                    height={320}
+                  />
+                </div>
+              </div>
 
+              {/* ── 2-col: Conversion Rate + Arrival Rate ── */}
+              <div className="ap-charts-2col">
                 <div className="analytics-card">
-                  <div className="analytics-card-header">
-                    <h3><FiPercent /> Conversion Rate by Agent</h3>
-                    <p>Percentage of bookings converted to sales</p>
+                  <div className="ap-chart-header">
+                    <div className="ap-chart-header-left">
+                      <div className="ap-chart-icon-wrap ap-ci-purple"><FiPercent size={16} /></div>
+                      <div>
+                        <h3 className="ap-chart-title">Conversion Rate by Agent</h3>
+                        <p className="ap-chart-subtitle">Percentage of bookings converted to sales</p>
+                      </div>
+                    </div>
+                    <div className="ap-chart-rate-badges">
+                      <span className="ap-crb ap-crb-green">≥50% Good</span>
+                      <span className="ap-crb ap-crb-amber">≥30% OK</span>
+                      <span className="ap-crb ap-crb-red">&lt;30% Low</span>
+                      <span className="ap-crb ap-crb-avg">Avg: {avgConv}%</span>
+                    </div>
                   </div>
                   <div className="analytics-card-body">
                     <Chart
                       options={conversionChartOptions}
                       series={conversionChartSeries}
                       type="bar"
-                      height={350}
+                      height={Math.max(220, chartAgents.length * 44)}
                     />
                   </div>
                 </div>
 
                 <div className="analytics-card">
-                  <div className="analytics-card-header">
-                    <h3><FiTarget /> Arrival Rate by Agent</h3>
-                    <p>Percentage of customers who arrived from bookings</p>
+                  <div className="ap-chart-header">
+                    <div className="ap-chart-header-left">
+                      <div className="ap-chart-icon-wrap ap-ci-green"><FiTarget size={16} /></div>
+                      <div>
+                        <h3 className="ap-chart-title">Arrival Rate by Agent</h3>
+                        <p className="ap-chart-subtitle">Percentage of customers who arrived from bookings</p>
+                      </div>
+                    </div>
+                    <div className="ap-chart-rate-badges">
+                      <span className="ap-crb ap-crb-green">≥50% Good</span>
+                      <span className="ap-crb ap-crb-amber">≥30% OK</span>
+                      <span className="ap-crb ap-crb-red">&lt;30% Low</span>
+                      <span className="ap-crb ap-crb-avg">Avg: {avgArr}%</span>
+                    </div>
                   </div>
                   <div className="analytics-card-body">
                     <Chart
                       options={arrivalChartOptions}
                       series={arrivalChartSeries}
                       type="bar"
-                      height={350}
+                      height={Math.max(220, chartAgents.length * 44)}
                     />
                   </div>
                 </div>
               </div>
+
 
               {/* Detailed Performance Table */}
               <div className="bookings-section">
@@ -576,7 +651,7 @@ function AgentPerformance() {
                           <div className="treatments-list">
                             {agent.treatments && agent.treatments.slice(0, 5).map((treatment, idx) => {
                               const percentage = totalTreatments > 0 ? (treatment.count / totalTreatments * 100) : 0;
-                              const colors = ['#2563EB', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444'];
+                              const colors = ['#1e40af', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444'];
                               const color = colors[idx % colors.length];
                               
                               return (

@@ -3,7 +3,7 @@
   left: 0;
   top: 0;
   height: 100vh;
-  background: linear-gradient(180deg, #2563EB 0%, #3B82F6 100%);
+  background: linear-gradient(180deg, #1e40af 0%, #2563eb 100%);
   color: white;
   display: flex;
   flex-direction: column;
@@ -192,7 +192,7 @@
   top: 20px;
   right: 20px;
   z-index: 1001;
-  background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
   border: none;
   color: white;
   width: 50px;
@@ -202,12 +202,12 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
 }
 
 .mobile-menu-toggle:hover {
   transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 6px 16px rgba(30, 64, 175, 0.4);
 }
 
 .mobile-menu-toggle:active {

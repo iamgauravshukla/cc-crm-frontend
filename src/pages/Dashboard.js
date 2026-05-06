@@ -116,7 +116,7 @@ function Dashboard({ onLogout }) {
       foreColor: isDarkMode ? '#cbd5e1' : '#64748b',
       background: 'transparent'
     },
-    colors: ['#2563EB'],
+    colors: ['#1e40af'],
     stroke: { curve: 'smooth', width: 3 },
     fill: { 
       type: 'gradient', 

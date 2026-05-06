@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDailyReports, getOTSBookings, getOverallBookings, getTomorrowBookings, getNext7DaysBookings, getCancellations, getTomorrowSummary } from '../services/api';
+import { getDailyReports, getOTSBookings, getOverallBookings, getTomorrowBookings, getNext7DaysBookings, getCancellations, getArrivalsToday, getTomorrowSummary } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import ReactApexChart from 'react-apexcharts';
@@ -131,6 +131,9 @@ const DailyReports = () => {
         case 'ots':
           response = await getOTSBookings();
           break;
+        case 'arrivals-today':
+          response = await getArrivalsToday();
+          break;
         case 'overall':
           response = await getOverallBookings();
           break;
@@ -204,6 +207,7 @@ const DailyReports = () => {
 
   const overallChartData = prepareBranchChartData(reports?.overallBookings?.byBranch);
   const otsChartData = prepareBranchChartData(reports?.otsBookings?.byBranch);
+  const arrivalsChartData = prepareBranchChartData(reports?.arrivalsToday?.byBranch);
   const tomorrowChartData = prepareBranchChartData(reports?.bookedTomorrow?.byBranch);
   const next7DaysChartData = prepareBranchChartData(reports?.bookedNext7Days?.byBranch);
   const cancellationsChartData = prepareBranchChartData(reports?.cancellations?.byBranch);
@@ -260,6 +264,66 @@ const DailyReports = () => {
     data: otsChartData.map(d => d.count)
   }];
 
+  // Arrivals Today chart options
+  const arrivalsChartOptions = {
+    ...getChartTheme(),
+    chart: { ...getChartTheme().chart, type: 'bar', height: 320 },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        columnWidth: '55%',
+        borderRadius: 8,
+        dataLabels: { position: 'top' }
+      }
+    },
+    dataLabels: {
+      enabled: true,
+      offsetY: -20,
+      style: {
+        fontSize: '13px',
+        fontWeight: 600,
+        colors: [isDarkMode ? '#f1f5f9' : '#1f2937']
+      }
+    },
+    xaxis: {
+      categories: arrivalsChartData.map(d => d.branch),
+      labels: {
+        style: {
+          colors: isDarkMode ? '#cbd5e1' : '#64748b',
+          fontSize: '12px',
+          fontWeight: 500
+        }
+      }
+    },
+    yaxis: {
+      title: {
+        text: 'Arrivals',
+        style: { color: isDarkMode ? '#cbd5e1' : '#64748b', fontSize: '12px' }
+      }
+    },
+    colors: ['#8b5cf6'],
+    grid: { borderColor: isDarkMode ? '#334155' : '#e5e7eb', strokeDashArray: 4 }
+  };
+
+  const arrivalsChartSeries = [{
+    name: 'Arrivals',
+    data: arrivalsChartData.map(d => d.count)
+  }];
+
+  // Status breakdown for arrivals donut
+  const arrivalsStatusData = reports?.arrivalsToday?.byStatus
+    ? Object.entries(reports.arrivalsToday.byStatus).filter(([, v]) => v > 0)
+    : [];
+  const arrivalsStatusDonutOptions = {
+    ...getChartTheme(),
+    labels: arrivalsStatusData.map(([label]) => label),
+    colors: ['#10b981', '#6366f1'],
+    legend: { position: 'bottom', labels: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } },
+    dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%`, style: { colors: ['#fff'] } },
+    plotOptions: { pie: { donut: { size: '60%' } } }
+  };
+  const arrivalsStatusDonutSeries = arrivalsStatusData.map(([, v]) => v);
+
   // Bar chart options
   const branchChartOptions = {
     ...getChartTheme(),
@@ -289,7 +353,7 @@ const DailyReports = () => {
         }
       }
     },
-    colors: ['#3b82f6']
+    colors: ['#2563eb']
   };
 
   const branchChartSeries = [{
@@ -301,7 +365,7 @@ const DailyReports = () => {
   const tomorrowPieOptions = {
     ...getChartTheme(),
     labels: tomorrowChartData.map(d => d.branch),
-    colors: ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'],
+    colors: ['#2563eb', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'],
     plotOptions: {
       pie: {
         donut: {
@@ -429,7 +493,7 @@ const DailyReports = () => {
             value={reports?.otsBookings?.count || 0}
             subtitle={formatCurrency(reports?.otsBookings?.revenue || 0)}
             trend={(((reports?.otsBookings?.count || 0) / (totalBookings || 1)) * 100).toFixed(0)}
-            trendColor="#3b82f6"
+            trendColor="#2563eb"
           />
           <StatCard
             icon={FiCalendar}
@@ -482,6 +546,70 @@ const DailyReports = () => {
                 <p>No OTS bookings today</p>
               </div>
             )}
+          </div>
+
+          {/* 1.5 Arrivals Today */}
+          <div className="chart-card full-width">
+            <div className="chart-header">
+              <div>
+                <h2>✅ Arrivals Today by Branch</h2>
+                <p>Customers who arrived for their appointment today</p>
+              </div>
+              <button className="btn-expand" onClick={() => handleExpandSection('arrivals-today')} title="View Details">
+                <FiMaximize2 size={18} />
+              </button>
+            </div>
+            <div className="ots-stats-row" style={{ marginBottom: '16px' }}>
+              <div className="ots-stat-badge" style={{ background: isDarkMode ? '#1e1b4b' : '#ede9fe', color: '#7c3aed' }}>
+                <span className="ots-badge-label">Total Arrivals</span>
+                <span className="ots-badge-value">{reports?.arrivalsToday?.count || 0}</span>
+              </div>
+              {Object.entries(reports?.arrivalsToday?.byStatus || {}).map(([status, count]) => (
+                count > 0 && (
+                  <div
+                    key={status}
+                    className="ots-stat-badge"
+                    style={{
+                      background: status === 'Arrived & bought'
+                        ? (isDarkMode ? '#064e3b' : '#d1fae5')
+                        : (isDarkMode ? '#1e1b4b' : '#e0e7ff'),
+                      color: status === 'Arrived & bought' ? '#059669' : '#4338ca'
+                    }}
+                  >
+                    <span className="ots-badge-label">{status}</span>
+                    <span className="ots-badge-value">{count}</span>
+                  </div>
+                )
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+              <div style={{ flex: '2 1 300px' }}>
+                {arrivalsChartData.length > 0 ? (
+                  <ReactApexChart
+                    options={arrivalsChartOptions}
+                    series={arrivalsChartSeries}
+                    type="bar"
+                    height={320}
+                  />
+                ) : (
+                  <div className="no-data">
+                    <FiBarChart2 size={40} />
+                    <p>No arrivals today</p>
+                  </div>
+                )}
+              </div>
+              {arrivalsStatusDonutSeries.length > 0 && (
+                <div style={{ flex: '1 1 220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ReactApexChart
+                    options={arrivalsStatusDonutOptions}
+                    series={arrivalsStatusDonutSeries}
+                    type="donut"
+                    height={240}
+                    width={240}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* 2. Overall Bookings */}

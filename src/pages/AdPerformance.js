@@ -5,7 +5,8 @@ import Loader from '../components/Loader';
 import ReactApexChart from 'react-apexcharts';
 import { useTheme } from '../context/ThemeContext';
 import { getAdPerformance } from '../services/api';
-import { FiCalendar, FiFilter } from 'react-icons/fi';
+import { FiSearch, FiTrendingUp, FiDollarSign, FiMapPin, FiTag } from 'react-icons/fi';
+import QuickFilterBar from '../components/QuickFilterBar';
 
 function AdPerformance() {
   const navigate = useNavigate();
@@ -13,37 +14,44 @@ function AdPerformance() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [performanceData, setPerformanceData] = useState(null);
-  const [sortBy, setSortBy] = useState('bookings'); // 'bookings', 'revenue', 'conversion'
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc', 'desc'
+  const [sortBy, setSortBy] = useState('bookings');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [dateRange, setDateRange] = useState('30');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
-  const [selectedBranch, setSelectedBranch] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const itemsPerPage = 50;
+  const [activeFilters, setActiveFilters] = useState([
+    { id: 'qf-date-default', field: 'dateRange', fieldLabel: 'Date Range', operator: 'is', value: '30', dateFrom: '', dateTo: '', displayValue: 'Last 30 Days' },
+  ]);
+  const [adIdSearch, setAdIdSearch] = useState('');
+  const itemsPerPage = 12;
+
+  const AD_FILTER_FIELDS = [
+    {
+      key: 'branch',
+      fieldLabel: 'Wellness Center',
+      type: 'select',
+      options: [
+        'AI SKIN', 'CENTRIS', 'DNA MANILA', 'GENEVA', 'GLORIETTA',
+        'HERA', 'LIONESSE', 'LUMIA', 'PARIS', 'SM NORTH',
+        'VENICE', 'STA LUCIA', 'FELIZ', 'ESTANCIA',
+      ],
+    },
+    {
+      key: 'dateRange',
+      fieldLabel: 'Date Range',
+      type: 'datepreset',
+      options: [
+        { value: '7',      label: 'Last 7 Days' },
+        { value: '30',     label: 'Last 30 Days' },
+        { value: '60',     label: 'Last 60 Days' },
+        { value: '90',     label: 'Last 90 Days' },
+        { value: 'custom', label: 'Custom Range' },
+      ],
+    },
+  ];
   
   // Use theme context for reactive theme detection
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
-
-  const branches = [
-    'All',
-    'AI SKIN',
-    'CENTRIS',
-    'DNA MANILA',
-    'GENEVA',
-    'GLORIETTA',
-    'HERA',
-    'LIONESSE',
-    'LUMIA',
-    'PARIS',
-    'SM NORTH',
-    'VENICE',
-    'STA LUCIA',
-    'FELIZ',
-    'ESTANCIA'
-  ];
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -55,38 +63,34 @@ function AdPerformance() {
   }, [navigate]);
 
   const fetchAdPerformance = useCallback(async () => {
-    // Don't fetch if custom date range is selected but dates aren't both filled
-    if (dateRange === 'custom' && (!customStartDate || !customEndDate)) {
-      return;
-    }
+    const dateFilter  = activeFilters.find(f => f.field === 'dateRange');
+    const branchFilter = activeFilters.find(f => f.field === 'branch');
+    const dateValue   = dateFilter?.value || '30';
+    const customStart = dateFilter?.dateFrom || '';
+    const customEnd   = dateFilter?.dateTo   || '';
+    const branch      = branchFilter?.value  || 'All';
+
+    if (dateValue === 'custom' && (!customStart || !customEnd)) return;
 
     setLoading(true);
     setError('');
-
     try {
       const params = {};
-      
-      if (dateRange === 'custom' && customStartDate && customEndDate) {
-        params.startDate = customStartDate;
-        params.endDate = customEndDate;
+      if (dateValue === 'custom' && customStart && customEnd) {
+        params.startDate = customStart;
+        params.endDate   = customEnd;
       } else {
-        params.days = dateRange;
+        params.days = dateValue;
       }
-      
-      if (selectedBranch !== 'All') {
-        params.branch = selectedBranch;
-      }
-      
+      if (branch !== 'All') params.branch = branch;
       const response = await getAdPerformance(params);
-      console.log('Ad performance data:', response.data);
       setPerformanceData(response.data.data);
     } catch (err) {
-      console.error('Error fetching ad performance:', err);
       setError(err.response?.data?.error || 'Failed to fetch ad performance data');
     } finally {
       setLoading(false);
     }
-  }, [dateRange, customStartDate, customEndDate, selectedBranch]);
+  }, [activeFilters]);
 
   useEffect(() => {
     if (user) {
@@ -96,40 +100,25 @@ function AdPerformance() {
 
   const sortAds = (ads) => {
     if (!ads) return [];
-    
     let filtered = ads;
-    
-    // Apply search filter
     if (searchTerm) {
-      filtered = ads.filter(ad => 
-        ad.adName?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const t = searchTerm.toLowerCase();
+      filtered = filtered.filter(ad => ad.adName?.toLowerCase().includes(t));
     }
-    
+    if (adIdSearch) {
+      const t = adIdSearch.toLowerCase();
+      filtered = filtered.filter(ad => ad.adName?.toLowerCase().includes(t));
+    }
     const sorted = [...filtered].sort((a, b) => {
       let aValue, bValue;
-      
       switch (sortBy) {
-        case 'bookings':
-          aValue = a.totalBookings;
-          bValue = b.totalBookings;
-          break;
-        case 'revenue':
-          aValue = a.totalRevenue;
-          bValue = b.totalRevenue;
-          break;
-        case 'conversion':
-          aValue = a.conversionRate;
-          bValue = b.conversionRate;
-          break;
-        default:
-          aValue = a.totalBookings;
-          bValue = b.totalBookings;
+        case 'bookings':  aValue = a.totalBookings;  bValue = b.totalBookings;  break;
+        case 'revenue':   aValue = a.totalRevenue;   bValue = b.totalRevenue;   break;
+        case 'conversion': aValue = a.conversionRate; bValue = b.conversionRate; break;
+        default: aValue = a.totalBookings; bValue = b.totalBookings;
       }
-      
       return sortOrder === 'desc' ? bValue - aValue : aValue - bValue;
     });
-    
     return sorted;
   };
 
@@ -154,6 +143,22 @@ function AdPerformance() {
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const fmtStatus = (s) =>
+    (s || 'Unknown').replace(/\b\w/g, c => c.toUpperCase());
+
+  const STATUS_ORDER = [
+    'arrived & bought', 'arrived not potential', 'comeback & bought',
+    'cancelled', 'promo hunter', 'scheduled',
+  ];
+
+  const sortedBreakdown = (breakdown = []) => {
+    const ordered = STATUS_ORDER
+      .map(key => breakdown.find(b => b.status === key))
+      .filter(Boolean);
+    const rest = breakdown.filter(b => !STATUS_ORDER.includes(b.status));
+    return [...ordered, ...rest];
   };
 
   // Chart configurations
@@ -206,7 +211,7 @@ function AdPerformance() {
       }
     },
     fill: { opacity: 1 },
-    colors: ['#2563EB', '#10b981'],
+    colors: ['#1e40af', '#10b981'],
     legend: {
       position: 'top',
       horizontalAlign: 'right',
@@ -241,77 +246,20 @@ function AdPerformance() {
       <Sidebar />
       <div className="main-content">
         <div className="page-container">
-          <h2 className="page-title">Ad Performance Report</h2>
 
-          {/* Filters Section */}
-          <div className="filters-section">
-            <div className="filter-group">
-              <label><FiCalendar /> Date Range:</label>
-              <select 
-                value={dateRange} 
-                onChange={(e) => {
-                  setDateRange(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="filter-select"
-              >
-                <option value="7">Last 7 Days</option>
-                <option value="30">Last 30 Days</option>
-                <option value="60">Last 60 Days</option>
-                <option value="90">Last 90 Days</option>
-                <option value="custom">Custom Range</option>
-              </select>
-            </div>
-
-            {dateRange === 'custom' && (
-              <div className="filter-group custom-date-range">
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  max={customEndDate || new Date().toISOString().split('T')[0]}
-                  className="date-input"
-                />
-                <span className="date-separator">to</span>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  min={customStartDate}
-                  max={new Date().toISOString().split('T')[0]}
-                  className="date-input"
-                />
-              </div>
-            )}
-
-            <div className="filter-group">
-              <label><FiFilter /> Wellness Center:</label>
-              <select 
-                value={selectedBranch} 
-                onChange={(e) => {
-                  setSelectedBranch(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="filter-select"
-              >
-                {branches.map(branch => (
-                  <option key={branch} value={branch}>{branch}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="search-bar">
-              <input
-                type="text"
-                placeholder="Search by ad name..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
+          {/* Page header */}
+          <div className="adc-page-header">
+            <h2 className="page-title" style={{ margin: 0 }}>Ad Performance Report</h2>
           </div>
+
+          {/* Quick Filters */}
+          <QuickFilterBar
+            fields={AD_FILTER_FIELDS}
+            activeFilters={activeFilters}
+            onChange={(f) => { setActiveFilters(f); setCurrentPage(1); }}
+            resultCount={sortedAds.length}
+            resultLabel="ads"
+          />
 
           {error && <div className="modern-error-message">{error}</div>}
 
@@ -321,137 +269,215 @@ function AdPerformance() {
             <p>No ad performance data available.</p>
           ) : (
             <>
-              {/* Overview Cards */}
+              {/* Overview stat cards */}
               <div className="analytics-grid">
-            <div className="analytics-card">
-              <div className="analytics-card-header">
-                <h3>Total Ads</h3>
-                <p>Active advertising campaigns</p>
+                <div className="analytics-card">
+                  <div className="analytics-card-header">
+                    <h3>Total Ads</h3>
+                    <p>Active advertising campaigns</p>
+                  </div>
+                  <div className="analytics-card-body">
+                    <div className="stat-large">{summary.totalAds}</div>
+                  </div>
+                </div>
+                <div className="analytics-card">
+                  <div className="analytics-card-header">
+                    <h3>Total Bookings</h3>
+                    <p>From all ad campaigns</p>
+                  </div>
+                  <div className="analytics-card-body">
+                    <div className="stat-large">{summary.totalBookings.toLocaleString()}</div>
+                  </div>
+                </div>
+                <div className="analytics-card">
+                  <div className="analytics-card-header">
+                    <h3>Total Revenue</h3>
+                    <p>Generated from ads</p>
+                  </div>
+                  <div className="analytics-card-body">
+                    <div className="stat-large">₱{summary.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  </div>
+                </div>
+                <div className="analytics-card">
+                  <div className="analytics-card-header">
+                    <h3>Avg Conversion Rate</h3>
+                    <p>Across all campaigns</p>
+                  </div>
+                  <div className="analytics-card-body">
+                    <div className="stat-large">{summary.avgConversionRate.toFixed(1)}%</div>
+                  </div>
+                </div>
               </div>
-              <div className="analytics-card-body">
-                <div className="stat-large">{summary.totalAds}</div>
-              </div>
-            </div>
 
-            <div className="analytics-card">
-              <div className="analytics-card-header">
-                <h3>Total Bookings</h3>
-                <p>From all ad campaigns</p>
+              {/* Chart */}
+              <div className="analytics-card">
+                <div className="analytics-card-header">
+                  <h3>Top 10 Ads — Bookings &amp; Conversion</h3>
+                  <p>Total bookings vs converted bookings</p>
+                </div>
+                <div className="analytics-card-body">
+                  <ReactApexChart
+                    options={bookingsChartOptions}
+                    series={bookingsChartSeries}
+                    type="bar"
+                    height={350}
+                  />
+                </div>
               </div>
-              <div className="analytics-card-body">
-                <div className="stat-large">{summary.totalBookings.toLocaleString()}</div>
-              </div>
-            </div>
 
-            <div className="analytics-card">
-              <div className="analytics-card-header">
-                <h3>Total Revenue</h3>
-                <p>Generated from ads</p>
-              </div>
-              <div className="analytics-card-body">
-                <div className="stat-large">₱{summary.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-              </div>
-            </div>
+              {/* Ad Detail Cards */}
+              <div className="analytics-card">
+                {/* Section header with inline search + sort */}
+                <div className="adc-section-header">
+                  <div className="adc-section-title-row">
+                    <div>
+                      <h3 style={{ margin: 0 }}>Ad Performance Details</h3>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {sortedAds.length} ads · Sort by:&nbsp;
+                        {['bookings','revenue','conversion'].map(s => (
+                          <button
+                            key={s}
+                            className={`adc-sort-btn${sortBy === s ? ' active' : ''}`}
+                            onClick={() => handleSort(s)}
+                          >
+                            {s === 'bookings' ? 'Bookings' : s === 'revenue' ? 'Revenue' : 'Conv. Rate'}
+                            {sortBy === s && (sortOrder === 'desc' ? ' ↓' : ' ↑')}
+                          </button>
+                        ))}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="adc-search-row">
+                    <div className="adc-search-box">
+                      <FiSearch className="adc-search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search ad name..."
+                        value={searchTerm}
+                        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                      />
+                    </div>
+                    <div className="adc-search-box">
+                      <FiTag className="adc-search-icon" />
+                      <input
+                        type="text"
+                        placeholder="Search Ad ID..."
+                        value={adIdSearch}
+                        onChange={(e) => { setAdIdSearch(e.target.value); setCurrentPage(1); }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="analytics-card-body">
+              {paginatedAds.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>No ads match your search.</p>
+              ) : (
+                <div className="adc-grid">
+                  {paginatedAds.map((ad) => {
+                    const breakdown  = sortedBreakdown(ad.statusBreakdown || []);
+                    const totalSales = breakdown.reduce((s, b) => s + (b.revenue || 0), 0);
+                    const convClass  = ad.conversionRate >= 30 ? 'high' : ad.conversionRate >= 15 ? 'medium' : 'low';
+                    return (
+                      <div key={ad.adName} className="adc-card">
+                        {/* Card Header */}
+                        <div className="adc-card-header">
+                          <div className="adc-card-name">{ad.adName || 'Unknown'}</div>
+                          <span className={`conversion-badge ${convClass}`}>{ad.conversionRate.toFixed(1)}% conv.</span>
+                        </div>
 
-            <div className="analytics-card">
-              <div className="analytics-card-header">
-                <h3>Avg Conversion Rate</h3>
-                <p>Across all campaigns</p>
-              </div>
-              <div className="analytics-card-body">
-                <div className="stat-large">{summary.avgConversionRate.toFixed(1)}%</div>
-              </div>
-            </div>
-          </div>
+                        {/* Key metrics strip */}
+                        <div className="adc-metrics">
+                          <div className="adc-metric">
+                            <FiTrendingUp size={13} />
+                            <span className="adc-metric-val">{ad.totalBookings}</span>
+                            <span className="adc-metric-lbl">Bookings</span>
+                          </div>
+                          <div className="adc-metric">
+                            <FiTrendingUp size={13} style={{ color: '#10b981' }} />
+                            <span className="adc-metric-val">{ad.convertedBookings}</span>
+                            <span className="adc-metric-lbl">Converted</span>
+                          </div>
+                          <div className="adc-metric">
+                            <FiDollarSign size={13} />
+                            <span className="adc-metric-val">₱{ad.totalRevenue.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+                            <span className="adc-metric-lbl">Revenue</span>
+                          </div>
+                          <div className="adc-metric">
+                            <FiDollarSign size={13} style={{ color: '#8b5cf6' }} />
+                            <span className="adc-metric-val">₱{ad.avgRevenuePerBooking.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+                            <span className="adc-metric-lbl">Avg / Booking</span>
+                          </div>
+                        </div>
 
-          {/* Charts */}
-          <div className="analytics-card">
-            <div className="analytics-card-header">
-              <h3>Top 10 Ads - Bookings & Conversion</h3>
-              <p>Total bookings vs converted bookings</p>
-            </div>
-            <div className="analytics-card-body">
-              <ReactApexChart
-                options={bookingsChartOptions}
-                series={bookingsChartSeries}
-                type="bar"
-                height={350}
-              />
-            </div>
-          </div>
+                        {/* Top branch / treatment */}
+                        <div className="adc-tags">
+                          {ad.topBranch && (
+                            <span className="adc-tag"><FiMapPin size={11} /> {ad.topBranch}</span>
+                          )}
+                          {ad.topTreatment && (
+                            <span className="adc-tag adc-tag-purple"><FiTag size={11} /> {ad.topTreatment}</span>
+                          )}
+                        </div>
 
-          {/* Detailed Table */}
-          <div className="analytics-card">
-            <div className="analytics-card-header">
-              <h3>Ad Performance Details</h3>
-              <p>Click column headers to sort</p>
-            </div>
-            <div className="analytics-card-body">
-              <div className="table-container">
-                <table className="bookings-table">
-                  <thead>
-                    <tr>
-                      <th onClick={() => handleSort('name')} style={{ cursor: 'pointer' }}>
-                        Ad Name {sortBy === 'name' && (sortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th onClick={() => handleSort('bookings')} style={{ cursor: 'pointer' }}>
-                        Total Bookings {sortBy === 'bookings' && (sortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th onClick={() => handleSort('conversion')} style={{ cursor: 'pointer' }}>
-                        Converted {sortBy === 'conversion' && (sortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th onClick={() => handleSort('conversion')} style={{ cursor: 'pointer' }}>
-                        Conversion Rate {sortBy === 'conversion' && (sortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th onClick={() => handleSort('revenue')} style={{ cursor: 'pointer' }}>
-                        Total Revenue {sortBy === 'revenue' && (sortOrder === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th>Avg Revenue per Booking</th>
-                      <th>Most Popular Branch</th>
-                      <th>Most Popular Treatment</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedAds.map((ad, index) => (
-                      <tr key={index}>
-                        <td><strong>{ad.adName || 'Unknown'}</strong></td>
-                        <td>{ad.totalBookings}</td>
-                        <td>{ad.convertedBookings}</td>
-                        <td>
-                          <span className={`conversion-badge ${
-                            ad.conversionRate >= 30 ? 'high' : 
-                            ad.conversionRate >= 15 ? 'medium' : 'low'
-                          }`}>
-                            {ad.conversionRate.toFixed(1)}%
-                          </span>
-                        </td>
-                        <td><strong>₱{ad.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
-                        <td>₱{ad.avgRevenuePerBooking.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td>{ad.topBranch || '-'}</td>
-                        <td>{ad.topTreatment || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              {/* Pagination Controls */}
+                        {/* Status breakdown table */}
+                        {breakdown.length > 0 && (
+                          <div className="adc-breakdown">
+                            <table className="adc-breakdown-table">
+                              <thead>
+                                <tr>
+                                  <th>Status</th>
+                                  <th>Count</th>
+                                  <th>Total Sales</th>
+                                  <th>% Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {breakdown.map(b => (
+                                  <tr key={b.status}>
+                                    <td>{fmtStatus(b.status)}</td>
+                                    <td>{b.count}</td>
+                                    <td>{b.revenue > 0 ? `₱${b.revenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '–'}</td>
+                                    <td>
+                                      <div className="ad-bd-pct-row">
+                                        <div className="ad-bd-pct-bar" style={{ width: `${b.pct}%` }} />
+                                        <span>{b.pct}%</span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                              <tfoot>
+                                <tr className="adc-breakdown-total">
+                                  <td><strong>TOTAL</strong></td>
+                                  <td><strong>{ad.totalBookings}</strong></td>
+                                  <td><strong>{totalSales > 0 ? `₱${totalSales.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '–'}</strong></td>
+                                  <td><strong>100%</strong></td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="pagination">
-                  <button 
-                    className="pagination-btn" 
+                  <button
+                    className="pagination-btn"
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                   >
                     Previous
                   </button>
-                  
                   <div className="pagination-info">
-                    Page {currentPage} of {totalPages} ({sortedAds.length} total ads)
+                    Page {currentPage} of {totalPages} ({sortedAds.length} ads)
                   </div>
-                  
-                  <button 
-                    className="pagination-btn" 
+                  <button
+                    className="pagination-btn"
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
                   >

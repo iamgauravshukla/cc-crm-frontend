@@ -69,7 +69,7 @@ body.sidebar-collapsed .daily-reports-container {
 }
 
 .btn-icon-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -186,7 +186,7 @@ body.sidebar-collapsed .daily-reports-container {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #f59e0b);
+  background: linear-gradient(90deg, #2563eb, #8b5cf6, #ec4899, #f59e0b);
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -549,7 +549,7 @@ body.sidebar-collapsed .daily-reports-container {
 
 /* Expand Button */
 .btn-expand {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -730,7 +730,7 @@ body.sidebar-collapsed .daily-reports-container {
 }
 
 .contact-info a:hover {
-  background: #3b82f6;
+  background: #2563eb;
   color: white;
 }
 

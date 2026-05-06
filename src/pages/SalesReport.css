@@ -90,7 +90,7 @@
 
 .sales-report-page .date-input:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
@@ -99,7 +99,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -112,7 +112,7 @@
 
 .sales-report-page .apply-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.35);
 }
 
 .sales-report-page .current-month-btn {
@@ -174,7 +174,7 @@
 }
 
 .sales-report-page .filter-btn.active {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   color: white;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
@@ -193,13 +193,13 @@
 }
 
 .sales-report-page .branch-filter:hover {
-  border-color: #3b82f6;
+  border-color: #2563eb;
   box-shadow: 0 2px 4px rgba(59, 130, 246, 0.1);
 }
 
 .sales-report-page .branch-filter:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
@@ -251,8 +251,8 @@
 }
 
 .sales-report-page .summary-card.highlight {
-  border: 2px solid #3b82f6;
-  border-left: 4px solid #3b82f6;
+  border: 2px solid #2563eb;
+  border-left: 4px solid #2563eb;
 }
 
 .sales-report-page .summary-card .card-header {
@@ -273,7 +273,7 @@
   font-weight: 600;
   text-transform: uppercase;
   color: white;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   padding: 4px 10px;
   border-radius: 4px;
   letter-spacing: 0.5px;
@@ -296,7 +296,7 @@
 }
 
 .sales-report-page .summary-card.current-month .card-icon {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   color: white;
 }
 
@@ -414,7 +414,7 @@
 
 .sales-report-page .info-btn:hover {
   color: var(--text-primary);
-  border-color: #3b82f6;
+  border-color: #2563eb;
 }
 
 .sales-report-page .info-btn svg {
@@ -441,7 +441,7 @@
 
 .sales-report-page .metric-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-color: #3b82f6;
+  border-color: #2563eb;
 }
 
 .sales-report-page .metric-icon {
@@ -451,7 +451,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   color: white;
   font-size: 18px;
   flex-shrink: 0;
@@ -530,14 +530,14 @@
 .sales-report-page .branch-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-  border-color: #3b82f6;
+  border-color: #2563eb;
 }
 
 .sales-report-page .branch-rank {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   color: white;
   font-size: 11px;
   font-weight: 700;
@@ -669,7 +669,7 @@
 }
 
 .sales-report-page .half-item.first .value {
-  color: #3b82f6;
+  color: #2563eb;
 }
 
 .sales-report-page .half-item.second .value {
@@ -822,7 +822,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 60%, #10b981 100%);
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 60%, #10b981 100%);
   border-radius: 16px;
   padding: 32px 40px;
   margin-bottom: 28px;

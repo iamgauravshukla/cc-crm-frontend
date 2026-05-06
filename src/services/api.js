@@ -60,6 +60,7 @@ export const getOverallBookings = () => api.get('/bookings/daily-reports/overall
 export const getTomorrowBookings = () => api.get('/bookings/daily-reports/tomorrow');
 export const getNext7DaysBookings = () => api.get('/bookings/daily-reports/next7days');
 export const getCancellations = () => api.get('/bookings/daily-reports/cancellations');
+export const getArrivalsToday = () => api.get('/bookings/daily-reports/arrivals-today');
 export const getTomorrowSummary = () => api.get('/bookings/daily-reports/tomorrow-summary');
 
 // Website Leads APIs (GET — protected, for CRM)

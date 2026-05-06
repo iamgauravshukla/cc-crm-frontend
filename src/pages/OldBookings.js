@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiCalendar } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch } from 'react-icons/fi';
 import { getOldBookings } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
@@ -23,27 +22,34 @@ function useDebounce(value, delay) {
 }
 
 function OldBookings() {
-  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBranch, setSelectedBranch] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('All');
-  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' (newest first) or 'asc' (oldest first)
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'card'
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [viewMode, setViewMode] = useState('table');
   const [page, setPage] = useState(1);
-  
-  // Booking Created Date Filter (timestamp based)
-  const [createdDateRange, setCreatedDateRange] = useState('all');
-  const [customCreatedStartDate, setCustomCreatedStartDate] = useState('');
-  const [customCreatedEndDate, setCustomCreatedEndDate] = useState('');
-  
-  // Appointment Date Filter (scheduled date based)
-  const [appointmentDateRange, setAppointmentDateRange] = useState('all');
-  const [customAppointmentStartDate, setCustomAppointmentStartDate] = useState('');
-  const [customAppointmentEndDate, setCustomAppointmentEndDate] = useState('');
+
+  // Quick filter state (Monday.com style)
+  // Default: show today's scheduled appointments
+  const [activeFilters, setActiveFilters] = useState([{
+    id: 'default-apt-today',
+    field: 'appointmentDate',
+    fieldLabel: 'Appointment Date',
+    operator: 'is',
+    value: 'today',
+    dateFrom: '',
+    dateTo: '',
+    displayValue: 'Today',
+  }]);
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [builderField, setBuilderField] = useState('');
+  const [builderOperator, setBuilderOperator] = useState('is');
+  const [builderValue, setBuilderValue] = useState('');
+  const [builderDateFrom, setBuilderDateFrom] = useState('');
+  const [builderDateTo, setBuilderDateTo] = useState('');
+  const [editingFilterId, setEditingFilterId] = useState(null);
   
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -55,7 +61,7 @@ function OldBookings() {
     hasPrev: false,
   });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingBooking, setEditingBooking] = useState(null);
+  const [editingBooking, setEditingBooking] = useState(null); // eslint-disable-line no-unused-vars
   const [editFormData, setEditFormData] = useState({});
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateError, setUpdateError] = useState('');
@@ -98,42 +104,24 @@ function OldBookings() {
   ];
 
   const fetchBookings = async () => {
-    // Don't fetch if custom date range is selected but dates aren't both filled
-    if (createdDateRange === 'custom' && (!customCreatedStartDate || !customCreatedEndDate)) {
-      return;
-    }
-    if (appointmentDateRange === 'custom' && (!customAppointmentStartDate || !customAppointmentEndDate)) {
-      return;
-    }
+    // Don't fetch if a custom date filter is active but dates aren't fully filled
+    const hasIncompleteCustomDate = activeFilters.some(
+      f => (f.field === 'createdDate' || f.field === 'appointmentDate') &&
+           f.value === 'custom' && (!f.dateFrom || !f.dateTo)
+    );
+    if (hasIncompleteCustomDate) return;
 
     setLoading(true);
     setError('');
 
     try {
-      const params = { 
-        page, 
-        limit, 
+      const params = {
+        page,
+        limit,
         search: debouncedSearchTerm,
-        branch: selectedBranch,
-        status: selectedStatus,
-        sortOrder: sortOrder === 'desc' ? 'newest' : 'oldest'
+        sortOrder: sortOrder === 'desc' ? 'newest' : 'oldest',
+        ...deriveApiParams(activeFilters)
       };
-      
-      // Add Booking Created Date filters
-      if (createdDateRange === 'custom' && customCreatedStartDate && customCreatedEndDate) {
-        params.createdStartDate = customCreatedStartDate;
-        params.createdEndDate = customCreatedEndDate;
-      } else if (createdDateRange !== 'all') {
-        params.createdDateRange = createdDateRange;
-      }
-      
-      // Add Appointment Date filters
-      if (appointmentDateRange === 'custom' && customAppointmentStartDate && customAppointmentEndDate) {
-        params.appointmentStartDate = customAppointmentStartDate;
-        params.appointmentEndDate = customAppointmentEndDate;
-      } else if (appointmentDateRange !== 'all') {
-        params.appointmentDateRange = appointmentDateRange;
-      }
       
       const response = await getOldBookings(params);
       
@@ -159,25 +147,16 @@ function OldBookings() {
   useEffect(() => {
     fetchBookings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, debouncedSearchTerm, selectedBranch, selectedStatus, sortOrder, createdDateRange, customCreatedStartDate, customCreatedEndDate, appointmentDateRange, customAppointmentStartDate, customAppointmentEndDate]);
-
-  const handleStatusChange = (e) => {
-    setSelectedStatus(e.target.value);
-    setPage(1); // Reset to first page on filter change
-  };
+  }, [page, debouncedSearchTerm, activeFilters, sortOrder]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
-    setPage(1); // Reset to first page on search
-  };
-
-  const handleBranchChange = (e) => {
-    setSelectedBranch(e.target.value);
-    setPage(1); // Reset to first page on filter change
+    setPage(1);
   };
 
   const toggleSort = () => {
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+    setPage(1);
   };
 
   const getStatusClass = (status) => {
@@ -228,6 +207,111 @@ function OldBookings() {
     'NICOLE', 'SYRA', 'DHEZA', 'GERALDINE', 'ANJELA', 'RAIZA', 'NALYN',
     'DONA', 'TRISHA', 'IRIS', 'JOY', 'MAE', 'JULS', 'YAN', 'SUTRA'
   ];
+
+  // ── Quick filter system ────────────────────────────────────────────────────
+  const FILTER_FIELDS = [
+    { key: 'branch',          fieldLabel: 'Branch',           type: 'select',     options: branches.filter(b => b !== 'All') },
+    { key: 'status',          fieldLabel: 'Status',           type: 'select',     options: bookingStatuses.filter(s => s !== 'All') },
+    { key: 'agent',           fieldLabel: 'Agent',            type: 'select',     options: agents },
+    { key: 'gender',          fieldLabel: 'Gender',           type: 'select',     options: ['Male', 'Female'] },
+    {
+      key: 'createdDate', fieldLabel: 'Booking Created', type: 'datepreset',
+      options: [
+        { value: 'today',  label: 'Today' },
+        { value: 'last7',  label: 'Last 7 Days' },
+        { value: 'last30', label: 'Last 30 Days' },
+        { value: 'last90', label: 'Last 90 Days' },
+        { value: 'custom', label: 'Custom Range' },
+      ]
+    },
+    {
+      key: 'appointmentDate', fieldLabel: 'Appointment Date', type: 'datepreset',
+      options: [
+        { value: 'today',    label: 'Today' },
+        { value: 'tomorrow', label: 'Tomorrow' },
+        { value: 'thisWeek', label: 'This Week' },
+        { value: 'custom',   label: 'Custom Range' },
+      ]
+    },
+  ];
+
+  const getFieldConfig = (key) => FILTER_FIELDS.find(f => f.key === key);
+
+  const deriveApiParams = (filters) => {
+    const p = {};
+    filters.forEach(f => {
+      if (f.field === 'branch')  p.branch = f.operator === 'is not' ? `NOT:${f.value}` : f.value;
+      if (f.field === 'status')  p.status = f.operator === 'is not' ? `NOT:${f.value}` : f.value;
+      if (f.field === 'agent')   p.agent  = f.value;
+      if (f.field === 'gender')  p.gender = f.value;
+      if (f.field === 'createdDate') {
+        if (f.value === 'custom') { p.createdStartDate = f.dateFrom; p.createdEndDate = f.dateTo; }
+        else p.createdDateRange = f.value;
+      }
+      if (f.field === 'appointmentDate') {
+        if (f.value === 'custom') { p.appointmentStartDate = f.dateFrom; p.appointmentEndDate = f.dateTo; }
+        else p.appointmentDateRange = f.value;
+      }
+    });
+    return p;
+  };
+
+  const resetBuilder = () => {
+    setBuilderField('');
+    setBuilderOperator('is');
+    setBuilderValue('');
+    setBuilderDateFrom('');
+    setBuilderDateTo('');
+  };
+
+  const canApplyFilter = () => {
+    if (!builderField || !builderValue) return false;
+    if (builderValue === 'custom' && (!builderDateFrom || !builderDateTo)) return false;
+    return true;
+  };
+
+  const applyFilter = () => {
+    const config = getFieldConfig(builderField);
+    let displayValue = builderValue;
+    if (config?.type === 'datepreset') {
+      if (builderValue === 'custom') displayValue = `${builderDateFrom} – ${builderDateTo}`;
+      else displayValue = config.options.find(o => o.value === builderValue)?.label || builderValue;
+    } else if (builderOperator === 'is not') {
+      displayValue = `≠ ${builderValue}`;
+    }
+    const newFilter = {
+      id: editingFilterId || Date.now().toString(),
+      field: builderField,
+      fieldLabel: config?.fieldLabel || builderField,
+      operator: builderOperator,
+      value: builderValue,
+      dateFrom: builderDateFrom,
+      dateTo: builderDateTo,
+      displayValue,
+    };
+    if (editingFilterId) {
+      setActiveFilters(prev => prev.map(f => f.id === editingFilterId ? newFilter : f));
+    } else {
+      setActiveFilters(prev => [...prev.filter(f => f.field !== builderField), newFilter]);
+    }
+    setPage(1);
+    setShowBuilder(false);
+    setEditingFilterId(null);
+    resetBuilder();
+  };
+
+  const removeFilter = (id) => { setActiveFilters(prev => prev.filter(f => f.id !== id)); setPage(1); };
+  const clearAllFilters = () => { setActiveFilters([]); setPage(1); };
+  const openEditFilter = (filter) => {
+    setEditingFilterId(filter.id);
+    setBuilderField(filter.field);
+    setBuilderOperator(filter.operator);
+    setBuilderValue(filter.value);
+    setBuilderDateFrom(filter.dateFrom || '');
+    setBuilderDateTo(filter.dateTo || '');
+    setShowBuilder(true);
+  };
+  // ── end quick filter system ────────────────────────────────────────────────
 
   const handleEditClick = (booking) => {
     setEditingBooking(booking);
@@ -321,170 +405,167 @@ function OldBookings() {
       <div className="main-content">
         <div className="page-container">
 
-        <div className="filters-section">
-          <div className="filter-group">
-            <label>Wellness Center:</label>
-            <select 
-              value={selectedBranch} 
-              onChange={handleBranchChange}
-              className="filter-select"
-            >
-              {branches.map(branch => (
-                <option key={branch} value={branch}>{branch}</option>
+        {/* ── Monday.com-style Quick Filter Bar ──────────────────────── */}
+        <div className="qf-bar">
+
+          {/* Toolbar row */}
+          <div className="qf-toolbar">
+            <div className="qf-left">
+              <button
+                className={`qf-toolbar-btn${showBuilder ? ' active' : ''}`}
+                onClick={() => { if (!showBuilder) { resetBuilder(); setEditingFilterId(null); } setShowBuilder(s => !s); }}
+              >
+                <FiFilter size={14} />
+                <span>Filter</span>
+                {activeFilters.length > 0 && <span className="qf-count-badge">{activeFilters.length}</span>}
+              </button>
+              <button className="qf-toolbar-btn" onClick={toggleSort}>
+                {sortOrder === 'desc' ? <FiArrowDown size={14} /> : <FiArrowUp size={14} />}
+                <span>{sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}</span>
+              </button>
+            </div>
+            <div className="qf-right">
+              <div className="qf-search">
+                <FiSearch size={14} />
+                <input
+                  type="text"
+                  placeholder="Search name, phone, email, Instagram, agent..."
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  aria-label="Search bookings"
+                />
+              </div>
+              <div className="view-toggle">
+                <button className={`view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')} title="Table View"><FiList size={16} /></button>
+                <button className={`view-btn ${viewMode === 'card' ? 'active' : ''}`} onClick={() => setViewMode('card')} title="Card View"><FiGrid size={16} /></button>
+              </div>
+            </div>
+          </div>
+
+          {/* Chips row — always visible */}
+          <div className="qf-chips-row">
+            <span className="qf-quick-label">Quick filters</span>
+            <span className="qf-result-count">Showing {(pagination.total || 0).toLocaleString()} bookings</span>
+            <div className="qf-chips">
+              {activeFilters.map(f => (
+                <div key={f.id} className="qf-chip" onClick={() => openEditFilter(f)} title="Click to edit filter">
+                  <span className="qf-chip-field">{f.fieldLabel}</span>
+                  <span className="qf-chip-sep">:</span>
+                  <span className="qf-chip-value">{f.displayValue}</span>
+                  <button className="qf-chip-remove" onClick={e => { e.stopPropagation(); removeFilter(f.id); }} aria-label="Remove filter">
+                    <FiX size={11} />
+                  </button>
+                </div>
               ))}
-            </select>
+              <button className="qf-add-btn" onClick={() => { resetBuilder(); setEditingFilterId(null); setShowBuilder(true); }}>
+                + Add filter
+              </button>
+            </div>
+            {activeFilters.length > 0 && (
+              <button className="qf-clear-btn" onClick={clearAllFilters}>Clear all</button>
+            )}
           </div>
 
-          <div className="filter-group">
-            <label>Booking Status:</label>
-            <select 
-              value={selectedStatus} 
-              onChange={handleStatusChange}
-              className="filter-select"
-            >
-              {bookingStatuses.map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
-          </div>
+          {/* Filter builder — slides open */}
+          {showBuilder && (
+            <div className="qf-builder">
+              <div className="qf-builder-header">
+                <span>{editingFilterId ? 'Edit filter' : 'Add filter'}</span>
+                <button className="qf-builder-close" onClick={() => { setShowBuilder(false); setEditingFilterId(null); resetBuilder(); }} aria-label="Close builder">
+                  <FiX size={15} />
+                </button>
+              </div>
 
-          <div className="search-bar">
-            <input
-              type="text"
-              placeholder="Search by name, email, phone, Instagram, agent, treatment..."
-              value={searchTerm}
-              onChange={handleSearch}
-            />
-          </div>
+              <div className="qf-builder-body">
+                {/* Field selector */}
+                <div className="qf-builder-row">
+                  <label>Field</label>
+                  <select
+                    value={builderField}
+                    onChange={e => { setBuilderField(e.target.value); setBuilderValue(''); setBuilderOperator('is'); setBuilderDateFrom(''); setBuilderDateTo(''); }}
+                  >
+                    <option value="">Select field...</option>
+                    {FILTER_FIELDS.map(f => (
+                      <option
+                        key={f.key}
+                        value={f.key}
+                        disabled={activeFilters.some(af => af.field === f.key && af.id !== editingFilterId)}
+                      >
+                        {f.fieldLabel}{activeFilters.some(af => af.field === f.key && af.id !== editingFilterId) ? ' (active)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          <div className="filter-group">
-            <label>Sort by Date:</label>
-            <button 
-              className="sort-btn"
-              onClick={toggleSort}
-              title="Sort by Date"
-            >
-              {sortOrder === 'desc' ? (
-                <>
-                  <FiArrowDown size={16} />
-                  <span>Newest First</span>
-                </>
-              ) : (
-                <>
-                  <FiArrowUp size={16} />
-                  <span>Oldest First</span>
-                </>
-              )}
-            </button>
-          </div>
+                {/* Select field: operator + value chips */}
+                {builderField && getFieldConfig(builderField)?.type === 'select' && (
+                  <>
+                    <div className="qf-builder-row">
+                      <label>Condition</label>
+                      <div className="qf-operator-btns">
+                        {['is', 'is not'].map(op => (
+                          <button key={op} className={`qf-op-btn${builderOperator === op ? ' active' : ''}`} onClick={() => setBuilderOperator(op)}>{op}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="qf-builder-row">
+                      <label>Value</label>
+                      <div className="qf-value-chips">
+                        {getFieldConfig(builderField).options.map(opt => (
+                          <button
+                            key={opt}
+                            className={`qf-value-chip${builderValue === opt ? ' selected' : ''}`}
+                            onClick={() => setBuilderValue(opt)}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
 
-          {/* Booking Created Date Filter */}
-          <div className="filter-group">
-            <label><FiCalendar /> Booking Created Date:</label>
-            <select 
-              value={createdDateRange} 
-              onChange={(e) => {
-                setCreatedDateRange(e.target.value);
-                setPage(1);
-              }}
-              className="filter-select"
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="last7">Last 7 Days</option>
-              <option value="last30">Last 30 Days</option>
-              <option value="last90">Last 90 Days</option>
-              <option value="custom">Custom Range</option>
-            </select>
-          </div>
+                {/* Date preset field: period chips + optional custom date inputs */}
+                {builderField && getFieldConfig(builderField)?.type === 'datepreset' && (
+                  <>
+                    <div className="qf-builder-row">
+                      <label>Period</label>
+                      <div className="qf-value-chips">
+                        {getFieldConfig(builderField).options.map(opt => (
+                          <button
+                            key={opt.value}
+                            className={`qf-value-chip${builderValue === opt.value ? ' selected' : ''}`}
+                            onClick={() => setBuilderValue(opt.value)}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {builderValue === 'custom' && (
+                      <div className="qf-builder-row">
+                        <label>Range</label>
+                        <div className="qf-custom-dates">
+                          <input type="date" value={builderDateFrom} onChange={e => setBuilderDateFrom(e.target.value)} max={builderDateTo || undefined} aria-label="Start date" />
+                          <span>to</span>
+                          <input type="date" value={builderDateTo} onChange={e => setBuilderDateTo(e.target.value)} min={builderDateFrom || undefined} aria-label="End date" />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
 
-          {createdDateRange === 'custom' && (
-            <div className="filter-group custom-date-range">
-              <input
-                type="date"
-                value={customCreatedStartDate}
-                onChange={(e) => {
-                  setCustomCreatedStartDate(e.target.value);
-                  setPage(1);
-                }}
-                max={customCreatedEndDate || new Date().toISOString().split('T')[0]}
-                className="date-input"
-              />
-              <span className="date-separator">to</span>
-              <input
-                type="date"
-                value={customCreatedEndDate}
-                onChange={(e) => {
-                  setCustomCreatedEndDate(e.target.value);
-                  setPage(1);
-                }}
-                min={customCreatedStartDate}
-                max={new Date().toISOString().split('T')[0]}
-                className="date-input"
-              />
+              <div className="qf-builder-footer">
+                <button className="qf-builder-cancel" onClick={() => { setShowBuilder(false); setEditingFilterId(null); resetBuilder(); }}>Cancel</button>
+                <button className="qf-builder-apply" disabled={!canApplyFilter()} onClick={applyFilter}>
+                  {editingFilterId ? 'Update filter' : 'Apply filter'}
+                </button>
+              </div>
             </div>
           )}
-
-          {/* Appointment Date Filter */}
-          <div className="filter-group">
-            <label><FiCalendar /> Appointment Scheduled Date:</label>
-            <select 
-              value={appointmentDateRange} 
-              onChange={(e) => {
-                setAppointmentDateRange(e.target.value);
-                setPage(1);
-              }}
-              className="filter-select"
-            >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="tomorrow">Tomorrow</option>
-              <option value="thisWeek">This Week</option>
-              <option value="custom">Custom Date Range</option>
-            </select>
-          </div>
-
-          {appointmentDateRange === 'custom' && (
-            <div className="filter-group custom-date-range">
-              <input
-                type="date"
-                value={customAppointmentStartDate}
-                onChange={(e) => {
-                  setCustomAppointmentStartDate(e.target.value);
-                  setPage(1);
-                }}
-                className="date-input"
-              />
-              <span className="date-separator">to</span>
-              <input
-                type="date"
-                value={customAppointmentEndDate}
-                onChange={(e) => {
-                  setCustomAppointmentEndDate(e.target.value);
-                  setPage(1);
-                }}
-                className="date-input"
-              />
-            </div>
-          )}
-
-          <div className="view-toggle">
-            <button 
-              className={`view-btn ${viewMode === 'table' ? 'active' : ''}`}
-              onClick={() => setViewMode('table')}
-              title="Table View"
-            >
-              <FiList size={18} />
-            </button>
-            <button 
-              className={`view-btn ${viewMode === 'card' ? 'active' : ''}`}
-              onClick={() => setViewMode('card')}
-              title="Card View"
-            >
-              <FiGrid size={18} />
-            </button>
-          </div>
         </div>
+        {/* ── end Quick Filter Bar ─────────────────────────────────────── */}
 
         {error && <div className="modern-error-message">{error}</div>}
 
@@ -502,7 +583,7 @@ function OldBookings() {
                   <thead>
                     <tr>
                       <th>Actions</th>
-                      <th>Date & Time</th>
+                      <th>Booking Schedule</th>
                       <th>Branch</th>
                       <th>Status</th>
                       <th>First Name</th>

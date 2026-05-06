@@ -1,25 +1,49 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiDollarSign, FiTrendingUp, FiCalendar, FiBarChart2, FiArrowUp, FiArrowDown, FiUsers, FiInfo } from 'react-icons/fi';
+import { FiTrendingUp, FiCalendar, FiBarChart2, FiArrowUp, FiArrowDown, FiUsers, FiInfo } from 'react-icons/fi';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import ReactApexChart from 'react-apexcharts';
 import { useTheme } from '../context/ThemeContext';
 import { getSalesReport } from '../services/api';
+import QuickFilterBar from '../components/QuickFilterBar';
 import './SalesReport.css';
+
+const SALES_FILTER_FIELDS = [
+  {
+    key: 'branch',
+    fieldLabel: 'Branch',
+    type: 'select',
+    options: [
+      'AI SKIN', 'CENTRIS', 'DNA MANILA', 'GENEVA', 'GLORIETTA',
+      'HERA', 'LIONESSE', 'LUMIA', 'PARIS', 'SM NORTH',
+      'VENICE', 'STA LUCIA', 'FELIZ', 'ESTANCIA',
+    ],
+  },
+  {
+    key: 'dateRange',
+    fieldLabel: 'Date Range',
+    type: 'daterange',
+  },
+];
+
+const initDefaultDateRange = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const end   = now.toISOString().split('T')[0];
+  const display = `${start} – ${end}`;
+  return [
+    { id: 'default-date', field: 'dateRange', fieldLabel: 'Date Range', operator: 'is', value: 'custom', dateFrom: start, dateTo: end, displayValue: display },
+  ];
+};
 
 const SalesReport = () => {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
-  
-  const [loading, setLoading] = useState(true);
-  const [salesData, setSalesData] = useState(null);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [appliedStartDate, setAppliedStartDate] = useState('');
-  const [appliedEndDate, setAppliedEndDate] = useState('');
-  const [rangeError, setRangeError] = useState('');
+
+  const [loading, setLoading]         = useState(true);
+  const [salesData, setSalesData]     = useState(null);
+  const [activeFilters, setActiveFilters] = useState(initDefaultDateRange);
   const [openTooltipId, setOpenTooltipId] = useState(null);
-  const [selectedBranch, setSelectedBranch] = useState('all');
 
   const BRANCHES = [
     'all',
@@ -27,6 +51,12 @@ const SalesReport = () => {
     'HERA', 'LIONESSE', 'LUMIA', 'PARIS', 'SM NORTH',
     'VENICE', 'STA LUCIA', 'FELIZ', 'ESTANCIA'
   ];
+
+  // Derive API params from active filters
+  const dateFilter       = activeFilters.find(f => f.field === 'dateRange');
+  const selectedBranch   = activeFilters.find(f => f.field === 'branch')?.value || 'all';
+  const appliedStartDate = dateFilter?.dateFrom || '';
+  const appliedEndDate   = dateFilter?.dateTo   || '';
 
   const fetchSalesReport = useCallback(async () => {
     try {
@@ -41,22 +71,14 @@ const SalesReport = () => {
     } finally {
       setLoading(false);
     }
-  }, [appliedEndDate, appliedStartDate, selectedBranch]);
+  }, [appliedStartDate, appliedEndDate, selectedBranch]);
 
   useEffect(() => {
     fetchSalesReport();
   }, [fetchSalesReport]);
 
-  useEffect(() => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startStr = start.toISOString().split('T')[0];
-    const endStr = now.toISOString().split('T')[0];
-    setStartDate(startStr);
-    setEndDate(endStr);
-    setAppliedStartDate(startStr);
-    setAppliedEndDate(endStr);
-  }, []);
+  // eslint-disable-next-line -- BRANCHES is a static list used below in JSX only
+  void BRANCHES;
 
   const getChartTheme = () => ({
     theme: {
@@ -122,13 +144,11 @@ const SalesReport = () => {
     year: 'numeric'
   });
 
-  const now = new Date();
   const appliedStart = appliedStartDate ? new Date(appliedStartDate) : null;
   const appliedEnd = appliedEndDate ? new Date(appliedEndDate) : null;
   const rangeDisplay = appliedStart && appliedEnd
     ? `${formatDate(appliedStart)} - ${formatDate(appliedEnd)}`
     : 'Select range';
-  const todayStr = now.toISOString().split('T')[0];
   const rangeSales = salesData?.rangeSales || { overall: 0, byBranch: [] };
   const previousRangeSales = salesData?.previousRangeSales || { overall: 0, byBranch: [] };
   const rangeFirstHalfSales = salesData?.rangeFirstHalfSales || { overall: 0, byBranch: [] };
@@ -191,37 +211,7 @@ const SalesReport = () => {
     ? dailyTrendData.map((item) => item.bookings)
     : monthlyTrendData.map((item) => item.bookings);
 
-  const handleApplyRange = () => {
-    if (!startDate || !endDate) {
-      setRangeError('Select both start and end dates.');
-      return;
-    }
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      setRangeError('Invalid date range.');
-      return;
-    }
-    if (start > end) {
-      setRangeError('Start date must be before end date.');
-      return;
-    }
-    setRangeError('');
-    setAppliedStartDate(startDate);
-    setAppliedEndDate(endDate);
-  };
 
-  const handleCurrentMonthRange = () => {
-    const nowDate = new Date();
-    const monthStart = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
-    const startStr = monthStart.toISOString().split('T')[0];
-    const endStr = nowDate.toISOString().split('T')[0];
-    setRangeError('');
-    setStartDate(startStr);
-    setEndDate(endStr);
-    setAppliedStartDate(startStr);
-    setAppliedEndDate(endStr);
-  };
 
   if (!salesData && !loading) {
     return (
@@ -333,7 +323,7 @@ const SalesReport = () => {
         }
       }
     },
-    colors: ['#3b82f6', '#8b5cf6'],
+    colors: ['#2563eb', '#8b5cf6'],
     legend: {
       position: 'top'
     }
@@ -359,7 +349,7 @@ const SalesReport = () => {
       height: '100%'
     },
     labels: rangeSales.byBranch.map(b => b.branch),
-    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'],
+    colors: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'],
     legend: {
       position: 'bottom',
       labels: {
@@ -464,7 +454,7 @@ const SalesReport = () => {
     ...getChartTheme(),
     chart: {
       ...getChartTheme().chart,
-      type: 'bar',
+      type: 'line',
       height: '100%'
     },
     plotOptions: {
@@ -522,7 +512,7 @@ const SalesReport = () => {
         }
       }
     ],
-    colors: ['#10b981', '#3b82f6'],
+    colors: ['#10b981', '#2563eb'],
     legend: {
       position: 'top'
     }
@@ -603,7 +593,7 @@ const SalesReport = () => {
         }
       }
     ],
-    colors: ['#10b981', '#3b82f6'],
+    colors: ['#10b981', '#2563eb'],
     legend: {
       position: 'top'
     }
@@ -633,56 +623,15 @@ const SalesReport = () => {
               <p className="page-subtitle">Sales = "Arrived &amp; bought", "Arrived not potential" &amp; "Comeback &amp; bought" | Range: {rangeDisplay}</p>
             </div>
             <div className="header-actions">
-                <button className="current-month-btn" onClick={handleCurrentMonthRange}>
-                  Current Month
-                </button>
-              <div className="filters-container">
-                <div className="date-field">
-                  <label htmlFor="sales-branch">Branch</label>
-                  <select
-                    id="sales-branch"
-                    className="date-input branch-select"
-                    value={selectedBranch}
-                    onChange={(e) => setSelectedBranch(e.target.value)}
-                  >
-                    {BRANCHES.map(b => (
-                      <option key={b} value={b}>{b === 'all' ? 'All Branches' : b}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="date-range-inputs">
-                  <div className="date-field">
-                    <label htmlFor="sales-start-date">Start</label>
-                    <input
-                      id="sales-start-date"
-                      type="date"
-                      className="date-input"
-                      value={startDate}
-                      max={todayStr}
-                      onChange={(event) => setStartDate(event.target.value)}
-                    />
-                  </div>
-                  <div className="date-field">
-                    <label htmlFor="sales-end-date">End</label>
-                    <input
-                      id="sales-end-date"
-                      type="date"
-                      className="date-input"
-                      value={endDate}
-                      max={todayStr}
-                      onChange={(event) => setEndDate(event.target.value)}
-                    />
-                  </div>
-                </div>
-                <button className="apply-btn" onClick={handleApplyRange}>
-                  Apply
-                </button>
-              </div>
+              <QuickFilterBar
+                fields={SALES_FILTER_FIELDS}
+                activeFilters={activeFilters}
+                onChange={(f) => setActiveFilters(f)}
+                resultLabel="bookings"
+              />
             </div>
           </div>
-          {rangeError && (
-            <div className="range-error">{rangeError}</div>
-          )}
+          {/* rangeError removed — validation handled by QuickFilterBar */}
        
 
           {salesData && (
@@ -967,7 +916,7 @@ const SalesReport = () => {
                 <ReactApexChart
                   options={yearlyChartOptions}
                   series={yearlySeries}
-                  type="bar"
+                  type="line"
                   height="100%"
                 />
               </div>
