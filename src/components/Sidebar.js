@@ -47,6 +47,7 @@ function Sidebar() {
     { path: '/old-bookings', label: 'Master Bookings', icon: FiCalendar, roles: ['Admin', 'Agent'] },
     { path: '/analytics', label: 'Analytics', icon: FiBarChart2, roles: ['Admin'] },
     { path: '/daily-reports', label: 'Daily Reports', icon: FiClipboard, roles: ['Admin'] },
+    { path: '/cc-booking-report', label: 'CC Booking Report', icon: FiBarChart2, roles: ['Admin'] },
     { path: '/sales-report', label: 'Sales Report', icon: FiDollarSign, roles: ['Admin'] },
     { path: '/agent-performance', label: 'Agent Performance', icon: FiUsers, roles: ['Admin'] },
     { path: '/ad-performance', label: 'Ad Performance', icon: FiTrendingUp, roles: ['Admin'] },

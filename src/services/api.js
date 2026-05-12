@@ -48,6 +48,7 @@ export const getMe = () => api.get('/auth/me');
 export const createBooking = (data) => api.post('/bookings', data);
 export const getOldBookings = (params) => api.get('/bookings/old', { params });
 export const getBookingById = (id) => api.get(`/bookings/${id}`);
+export const deleteBooking = (rowNumber) => api.delete(`/bookings/${rowNumber}`);
 
 // Analytics APIs
 export const getAdPerformance = (params) => api.get('/analytics/ad-performance', { params });
@@ -62,6 +63,7 @@ export const getNext7DaysBookings = () => api.get('/bookings/daily-reports/next7
 export const getCancellations = () => api.get('/bookings/daily-reports/cancellations');
 export const getArrivalsToday = () => api.get('/bookings/daily-reports/arrivals-today');
 export const getTomorrowSummary = () => api.get('/bookings/daily-reports/tomorrow-summary');
+export const getCCReport = () => api.get('/bookings/cc-report');
 
 // Website Leads APIs (GET — protected, for CRM)
 export const getCallLeads = (params) => api.get('/leads/call', { params });

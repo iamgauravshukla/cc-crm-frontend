@@ -2647,6 +2647,46 @@ thead {
   color: #065f46;
 }
 
+.card-delete-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.dark .card-delete-btn:hover {
+  background: #7f1d1d;
+  border-color: #fca5a5;
+  color: #fca5a5;
+}
+
+.delete-row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  color: #dc2626;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.delete-row-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.dark .delete-row-btn {
+  color: #f87171;
+}
+
+.dark .delete-row-btn:hover {
+  background: #7f1d1d;
+  border-color: #fca5a5;
+}
+
 .dark .card-action-btn {
   background: var(--bg-tertiary);
   border-color: var(--border-primary);

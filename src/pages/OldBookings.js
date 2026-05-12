@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera } from 'react-icons/fi';
+import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
 import html2canvas from 'html2canvas';
-import { getOldBookings } from '../services/api';
+import { getOldBookings, deleteBooking } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 
@@ -71,6 +71,11 @@ function OldBookings() {
   const [updateSuccess, setUpdateSuccess] = useState('');
   // Track which rows have in-flight validation updates
   const [validationUpdating, setValidationUpdating] = useState({});
+
+  // Delete state
+  const [confirmDeleteBooking, setConfirmDeleteBooking] = useState(null); // booking object to confirm
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const limit = 50;
 
@@ -210,7 +215,8 @@ function OldBookings() {
 
   const agents = [
     'NICOLE', 'SYRA', 'DHEZA', 'GERALDINE', 'ANJELA', 'RAIZA', 'NALYN',
-    'DONA', 'TRISHA', 'IRIS', 'JOY', 'MAE', 'JULS', 'YAN', 'SUTRA'
+    'DONA', 'TRISHA', 'IRIS', 'JOY', 'MAE', 'JULS', 'YAN', 'SUTRA',
+    'GLADEZ', 'LEIH', 'MARY', 'ROSE', 'CAMIL', 'SHAINA'
   ];
 
   // ── Quick filter system ────────────────────────────────────────────────────
@@ -343,6 +349,26 @@ function OldBookings() {
     setShowBuilder(true);
   };
   // ── end quick filter system ────────────────────────────────────────────────
+
+  const handleDeleteClick = (booking) => {
+    setDeleteError('');
+    setConfirmDeleteBooking(booking);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteBooking) return;
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      await deleteBooking(confirmDeleteBooking.rowNumber);
+      setConfirmDeleteBooking(null);
+      fetchBookings();
+    } catch (err) {
+      setDeleteError(err.response?.data?.error || 'Failed to delete booking');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const handleEditClick = (booking) => {
     setEditingBooking(booking);
@@ -708,6 +734,7 @@ function OldBookings() {
                       <th>Companion Area</th>
                       {user?.role === 'Admin' && <th className="validation-col-header">Cancel Validation</th>}
                       {user?.role === 'Admin' && <th className="validation-col-header">Underage Validation</th>}
+                      {user?.role === 'Admin' && <th className="validation-col-header">Delete</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -790,6 +817,17 @@ function OldBookings() {
                             </label>
                           </td>
                         )}
+                        {user?.role === 'Admin' && (
+                          <td className="validation-cell">
+                            <button
+                              className="delete-row-btn"
+                              title="Delete this booking"
+                              onClick={() => handleDeleteClick(booking)}
+                            >
+                              <FiTrash2 size={15} />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -815,6 +853,11 @@ function OldBookings() {
                           <button className="card-action-btn card-snap-btn" onClick={() => handleCardSnapshot(booking, index)} title="Save as image">
                             <FiCamera size={14} />
                           </button>
+                          {user?.role === 'Admin' && (
+                            <button className="card-action-btn card-delete-btn" onClick={() => handleDeleteClick(booking)} title="Delete booking">
+                              <FiTrash2 size={14} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1253,6 +1296,58 @@ function OldBookings() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* ── Delete Confirmation Modal ── */}
+        {confirmDeleteBooking && (
+          <div className="modal-overlay" onClick={() => !deleteLoading && setConfirmDeleteBooking(null)}>
+            <div className="modal-container" style={{ maxWidth: '420px' }} onClick={e => e.stopPropagation()}>
+              <div className="modal-header" style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)' }}>
+                <h2 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <FiAlertTriangle size={20} /> Delete Booking
+                </h2>
+                <button className="modal-close" onClick={() => !deleteLoading && setConfirmDeleteBooking(null)} disabled={deleteLoading}>
+                  <FiX size={20} />
+                </button>
+              </div>
+              <div className="modal-body" style={{ padding: '28px 24px' }}>
+                <p style={{ margin: '0 0 8px', color: 'var(--text-primary)', fontSize: '15px' }}>
+                  Are you sure you want to permanently delete this booking?
+                </p>
+                <p style={{ margin: '0 0 20px', fontWeight: 700, color: 'var(--text-primary)', fontSize: '16px' }}>
+                  {confirmDeleteBooking.firstName} {confirmDeleteBooking.lastName} — {confirmDeleteBooking.date}
+                </p>
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  This will remove the record from Master Bookings and the Intake sheet. This action cannot be undone.
+                </p>
+                {deleteError && (
+                  <div style={{ marginTop: '14px', padding: '10px 14px', background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: '8px', color: '#dc2626', fontSize: '13px' }}>
+                    {deleteError}
+                  </div>
+                )}
+              </div>
+              <div className="modal-actions" style={{ padding: '0 24px 24px', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setConfirmDeleteBooking(null)}
+                  disabled={deleteLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)' }}
+                  onClick={handleConfirmDelete}
+                  disabled={deleteLoading}
+                >
+                  <FiTrash2 size={15} />
+                  {deleteLoading ? 'Deleting…' : 'Delete Permanently'}
+                </button>
+              </div>
             </div>
           </div>
         )}

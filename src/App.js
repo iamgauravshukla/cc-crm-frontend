@@ -10,6 +10,7 @@ import Analytics from './pages/Analytics';
 import AgentPerformance from './pages/AgentPerformance';
 import AdPerformance from './pages/AdPerformance';
 import DailyReports from './pages/DailyReports';
+import CCBookingReport from './pages/CCBookingReport';
 import SalesReport from './pages/SalesReport';
 import UsersManagement from './pages/UsersManagement';
 import WebsiteLeads from './pages/WebsiteLeads';
@@ -103,6 +104,11 @@ function App() {
           <Route path="/daily-reports" element={
             <PrivateRoute>
               <DailyReports />
+            </PrivateRoute>
+          } />
+          <Route path="/cc-booking-report" element={
+            <PrivateRoute>
+              <CCBookingReport />
             </PrivateRoute>
           } />
           <Route path="/sales-report" element={

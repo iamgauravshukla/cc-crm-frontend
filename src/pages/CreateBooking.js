@@ -75,7 +75,8 @@ function CreateBooking() {
 
   const agents = [
     'NICOLE', 'SYRA', 'DHEZA', 'GERALDINE', 'ANJELA', 'RAIZA', 'NALYN',
-    'DONA', 'TRISHA', 'IRIS', 'JOY', 'MAE', 'JULS', 'YAN', 'SUTRA'
+    'DONA', 'TRISHA', 'IRIS', 'JOY', 'MAE', 'JULS', 'YAN', 'SUTRA',
+    'GLADEZ', 'LEIH', 'MARY', 'ROSE', 'CAMIL', 'SHAINA'
   ];
 
   const handleChange = (e) => {
