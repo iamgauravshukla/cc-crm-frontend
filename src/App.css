@@ -1087,24 +1087,32 @@ body.sidebar-collapsed .main-content {
   box-shadow: 0 2px 12px var(--card-shadow);
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #2563eb var(--bg-tertiary);
 }
 
 .table-container::-webkit-scrollbar {
-  height: 8px;
+  height: 10px;
 }
 
 .table-container::-webkit-scrollbar-track {
   background: var(--bg-tertiary);
   border-radius: 10px;
+  margin: 0 6px;
 }
 
 .table-container::-webkit-scrollbar-thumb {
-  background: #1e40af;
+  background: linear-gradient(90deg, #2563eb, #1e40af);
   border-radius: 10px;
+  border: 2px solid var(--bg-tertiary);
 }
 
 .table-container::-webkit-scrollbar-thumb:hover {
-  background: #1e3a8a;
+  background: linear-gradient(90deg, #1d4ed8, #1e3a8a);
+}
+
+.table-container::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .bookings-table {

@@ -64,6 +64,7 @@ export const getCancellations = () => api.get('/bookings/daily-reports/cancellat
 export const getArrivalsToday = () => api.get('/bookings/daily-reports/arrivals-today');
 export const getTomorrowSummary = () => api.get('/bookings/daily-reports/tomorrow-summary');
 export const getCCReport = () => api.get('/bookings/cc-report');
+export const getCCReportDrilldown = (section) => api.get('/bookings/cc-report/drilldown', { params: { section } });
 
 // Website Leads APIs (GET — protected, for CRM)
 export const getCallLeads = (params) => api.get('/leads/call', { params });

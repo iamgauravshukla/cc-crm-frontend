@@ -4,916 +4,429 @@ import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import ReactApexChart from 'react-apexcharts';
 import html2canvas from 'html2canvas';
-import { FiRefreshCw, FiTrendingUp, FiDollarSign, FiCalendar, FiBarChart2, FiPieChart, FiAlertCircle, FiCheckCircle, FiX, FiMaximize2, FiPhone, FiMail, FiCamera, FiDownload } from 'react-icons/fi';
+import { FiRefreshCw, FiAlertCircle, FiX, FiMaximize2, FiPhone, FiMail, FiCamera, FiDownload, FiChevronDown } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import './DailyReports.css';
 
+const BRANCH_COLORS = [
+  '#ec4899','#f97316','#a16207','#22c55e','#06b6d4',
+  '#f59e0b','#8b5cf6','#3b82f6','#10b981','#e11d48',
+  '#14b8a6','#84cc16','#6366f1','#f43f5e','#0ea5e9'
+];
+
 const DailyReports = () => {
-  const [reports, setReports] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [reports, setReports]     = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
   const [refreshAt, setRefreshAt] = useState(new Date());
+
+  // Full-page modal (expand button)
   const [expandedSection, setExpandedSection] = useState(null);
-  const [modalBookings, setModalBookings] = useState([]);
-  const [modalLoading, setModalLoading] = useState(false);
+  const [modalBookings, setModalBookings]     = useState([]);
+  const [modalLoading, setModalLoading]       = useState(false);
 
-  // Snapshot selection
+  // Inline bar-click drill-down
+  const [drillDown, setDrillDown] = useState(null);
+  // { chartKey, branch, bookings: [], loading: bool }
+  const bookingsCache = useRef({});
+
+  // Snapshot
   const [selectedCards, setSelectedCards] = useState(new Set());
-  const [snapshotMode, setSnapshotMode] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [snapshotMode, setSnapshotMode]   = useState(false);
+  const [downloading, setDownloading]     = useState(false);
   const cardRefs = useRef({});
-  
-  // Use theme context for reactive theme detection
+
   const { theme } = useTheme();
-  const isDarkMode = theme === 'dark';
+  const isDark = theme === 'dark';
 
+  // ── Snapshot ──────────────────────────────────────────────────────────────
   const toggleCardSelect = useCallback((id) => {
-    setSelectedCards(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    setSelectedCards(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }, []);
 
-  const selectAll = useCallback(() => {
-    setSelectedCards(new Set(Object.keys(cardRefs.current)));
-  }, []);
-
-  const clearSelection = useCallback(() => {
-    setSelectedCards(new Set());
-    setSnapshotMode(false);
-  }, []);
+  const selectAll      = () => setSelectedCards(new Set(Object.keys(cardRefs.current)));
+  const clearSelection = useCallback(() => { setSelectedCards(new Set()); setSnapshotMode(false); }, []);
 
   const downloadSelected = useCallback(async () => {
-    if (selectedCards.size === 0) return;
+    if (!selectedCards.size) return;
     setDownloading(true);
     try {
       for (const id of selectedCards) {
         const el = cardRefs.current[id];
         if (!el) continue;
         const canvas = await html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true, logging: false });
-        const link = document.createElement('a');
-        link.download = `daily-report-${id}-${new Date().toISOString().slice(0,10)}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        // small delay between downloads
+        const a = document.createElement('a');
+        a.download = `daily-report-${id}-${new Date().toISOString().slice(0,10)}.png`;
+        a.href = canvas.toDataURL('image/png');
+        a.click();
         await new Promise(r => setTimeout(r, 200));
       }
-    } finally {
-      setDownloading(false);
-    }
+    } finally { setDownloading(false); }
   }, [selectedCards]);
 
-  // Common chart theme
-  const getChartTheme = () => ({
-    theme: {
-      mode: isDarkMode ? 'dark' : 'light'
-    },
-    chart: {
-      foreColor: isDarkMode ? '#cbd5e1' : '#64748b',
-      background: 'transparent',
-      toolbar: {
-        show: true,
-        tools: {
-          download: true,
-          selection: true,
-          zoom: true,
-          zoomin: true,
-          zoomout: true,
-          pan: true,
-          reset: true
-        }
-      }
-    },
-    tooltip: {
-      theme: isDarkMode ? 'dark' : 'light',
-      style: {
-        fontSize: '12px'
-      }
-    },
-    grid: {
-      borderColor: isDarkMode ? '#334155' : '#e2e8f0'
-    },
-    xaxis: {
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b',
-          fontSize: '12px'
-        }
-      }
-    },
-    yaxis: {
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b'
-        }
-      }
-    },
-    legend: {
-      labels: {
-        colors: isDarkMode ? '#cbd5e1' : '#64748b'
-      }
-    }
-  });
+  // ── Data fetching ─────────────────────────────────────────────────────────
+  const fetchDailyReports = async () => {
+    try {
+      setLoading(true); setError(null);
+      const res = await getDailyReports();
+      if (res.data?.success) { setReports(res.data.reports); setRefreshAt(new Date()); }
+      else setError('Failed to load daily reports');
+    } catch (err) { setError(err.message || 'An error occurred'); }
+    finally { setLoading(false); }
+  };
 
   useEffect(() => {
     fetchDailyReports();
-    
-    // Auto-refresh every 5 minutes
-    const periodicRefresh = setInterval(fetchDailyReports, 5 * 60 * 1000);
-    
-    // Refresh at midnight
-    const calculateMidnightRefresh = () => {
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-      const timeToMidnight = tomorrow.getTime() - now.getTime();
-      
-      const midnightRefresh = setTimeout(() => {
-        console.log('🌙 Midnight reached - refreshing daily reports');
-        fetchDailyReports();
-        calculateMidnightRefresh();
-      }, timeToMidnight);
-      
-      return midnightRefresh;
+    const auto = setInterval(fetchDailyReports, 5 * 60 * 1000);
+    const calcMid = () => {
+      const now = new Date(), tom = new Date(now);
+      tom.setDate(tom.getDate() + 1); tom.setHours(0,0,0,0);
+      return setTimeout(() => { fetchDailyReports(); calcMid(); }, tom - now);
     };
-    
-    const midnightRefresh = calculateMidnightRefresh();
-    
-    return () => {
-      clearInterval(periodicRefresh);
-      clearTimeout(midnightRefresh);
-    };
-  }, []);
+    const mid = calcMid();
+    return () => { clearInterval(auto); clearTimeout(mid); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchDailyReports = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await getDailyReports();
-      if (response.data && response.data.success) {
-        setReports(response.data.reports);
-        setRefreshAt(new Date());
-      } else {
-        setError('Failed to load daily reports');
-      }
-    } catch (err) {
-      console.error('Error fetching daily reports:', err);
-      setError(err.message || 'An error occurred while fetching reports');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ── Full-section modal ────────────────────────────────────────────────────
   const handleExpandSection = async (sectionName) => {
-    setExpandedSection(sectionName);
-    setModalLoading(true);
+    setExpandedSection(sectionName); setModalLoading(true);
     try {
-      let response;
-      switch(sectionName) {
-        case 'ots':
-          response = await getOTSBookings();
-          break;
-        case 'arrivals-today':
-          response = await getArrivalsToday();
-          break;
-        case 'overall':
-          response = await getOverallBookings();
-          break;
-        case 'tomorrow':
-          response = await getTomorrowBookings();
-          break;
-        case 'next7days':
-          response = await getNext7DaysBookings();
-          break;
-        case 'cancellations':
-          response = await getCancellations();
-          break;
-        case 'tomorrow-summary':
-          response = await getTomorrowSummary();
-          break;
-        default:
-          return;
+      const apiMap = {
+        ots: getOTSBookings, 'arrivals-today': getArrivalsToday,
+        overall: getOverallBookings, tomorrow: getTomorrowBookings,
+        next7days: getNext7DaysBookings, cancellations: getCancellations,
+        'tomorrow-summary': getTomorrowSummary,
+      };
+      const fn = apiMap[sectionName]; if (!fn) return;
+      const res = await fn();
+      setModalBookings(res.data?.bookings || []);
+    } catch { setModalBookings([]); }
+    finally { setModalLoading(false); }
+  };
+
+  // ── Inline bar-click drill-down ───────────────────────────────────────────
+  const handleBarClick = async (chartKey, branch, apiFn) => {
+    // Toggle off if same bar
+    if (drillDown?.chartKey === chartKey && drillDown?.branch === branch) {
+      setDrillDown(null); return;
+    }
+    setDrillDown({ chartKey, branch, bookings: [], loading: true });
+    try {
+      let all = bookingsCache.current[chartKey];
+      if (!all) {
+        const res = await apiFn();
+        all = res.data?.bookings || [];
+        bookingsCache.current[chartKey] = all;
       }
-      if (response.data && response.data.success) {
-        setModalBookings(response.data.bookings || []);
-      }
-    } catch (err) {
-      console.error('Error fetching bookings:', err);
-      setModalBookings([]);
-    } finally {
-      setModalLoading(false);
+      const filtered = all.filter(b => (b.branch || '').toLowerCase() === branch.toLowerCase());
+      setDrillDown({ chartKey, branch, bookings: filtered, loading: false });
+    } catch {
+      setDrillDown({ chartKey, branch, bookings: [], loading: false });
     }
   };
 
-  const handleCloseModal = () => {
-    setExpandedSection(null);
-    setModalBookings([]);
-  };
+  if (loading) return (
+    <><Sidebar /><main className="daily-reports-container">
+      <div style={{ display:'flex', justifyContent:'center', alignItems:'center', minHeight:'80vh' }}>
+        <Loader message="Loading daily reports..." />
+      </div>
+    </main></>
+  );
 
-  if (loading) {
-    return (
-      <>
-        <Sidebar />
-        <main className="daily-reports-container">
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
-            <Loader message="Loading daily reports..." />
-          </div>
-        </main>
-      </>
-    );
-  }
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const prepareBranchData = (byBranch) =>
+    Object.entries(byBranch || {})
+      .filter(([, v]) => v.count > 0)
+      .sort(([, a], [, b]) => b.count - a.count)
+      .map(([branch, v]) => ({ branch, count: v.count }));
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2
-    }).format(value);
-  };
-
-  // Prepare data for charts
-  const prepareBranchChartData = (branchData) => {
-    if (!branchData || typeof branchData !== 'object') {
-      return [];
-    }
-    return Object.entries(branchData)
-      .filter(([_, value]) => value.count > 0)
-      .map(([branch, value]) => ({
-        branch,
-        count: value.count,
-        revenue: value.revenue
-      }))
-      .sort((a, b) => b.count - a.count);
-  };
-
-  const overallChartData = prepareBranchChartData(reports?.overallBookings?.byBranch);
-  const otsChartData = prepareBranchChartData(reports?.otsBookings?.byBranch);
-  const arrivalsChartData = prepareBranchChartData(reports?.arrivalsToday?.byBranch);
-  const tomorrowChartData = prepareBranchChartData(reports?.bookedTomorrow?.byBranch);
-  const next7DaysChartData = prepareBranchChartData(reports?.bookedNext7Days?.byBranch);
-  const cancellationsChartData = prepareBranchChartData(reports?.cancellations?.byBranch);
-
-  // OTS chart options
-  const otsChartOptions = {
-    ...getChartTheme(),
-    chart: { ...getChartTheme().chart, type: 'bar', height: 350 },
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '55%',
-        borderRadius: 8,
-        dataLabels: { position: 'top' }
-      }
-    },
-    dataLabels: {
-      enabled: true,
-      offsetY: -20,
-      style: {
-        fontSize: '13px',
-        fontWeight: 600,
-        colors: [isDarkMode ? '#f1f5f9' : '#1f2937']
-      }
-    },
-    xaxis: {
-      categories: otsChartData.map(d => d.branch),
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b',
-          fontSize: '12px',
-          fontWeight: 500
+  const barOptions = (data, title, chartKey, apiFn) => ({
+    chart: {
+      type: 'bar', background: 'transparent', toolbar: { show: false }, fontFamily: 'inherit',
+      events: {
+        dataPointSelection: (_ev, _ctx, config) => {
+          const branch = data[config.dataPointIndex]?.branch;
+          if (branch) handleBarClick(chartKey, branch, apiFn);
         }
       }
     },
-    yaxis: {
-      title: {
-        text: 'Number of Bookings',
-        style: {
-          color: isDarkMode ? '#cbd5e1' : '#64748b',
-          fontSize: '12px'
-        }
-      }
-    },
-    colors: ['#10b981'],
-    grid: {
-      borderColor: isDarkMode ? '#334155' : '#e5e7eb',
-      strokeDashArray: 4
-    }
-  };
+    theme: { mode: isDark ? 'dark' : 'light' },
+    title: { text: title, style: { fontSize:'13px', fontWeight:600, color: isDark ? '#e2e8f0' : '#1e293b' } },
+    plotOptions: { bar: { borderRadius:5, distributed:true, columnWidth:'55%', dataLabels:{ position:'top' }, cursor: 'pointer' } },
+    dataLabels: { enabled:true, offsetY:-18, style:{ fontSize:'12px', fontWeight:700, colors:[isDark ? '#e2e8f0' : '#1e293b'] } },
+    colors: data.map((_, i) => BRANCH_COLORS[i % BRANCH_COLORS.length]),
+    legend: { show: false },
+    grid: { borderColor: isDark ? '#334155' : '#e2e8f0', strokeDashArray: 4 },
+    xaxis: { categories: data.map(d => d.branch), labels: { rotate:-40, style:{ colors: isDark ? '#94a3b8' : '#64748b', fontSize:'11px' } } },
+    yaxis: { labels: { style: { colors: isDark ? '#94a3b8' : '#64748b', fontSize:'11px' } } },
+    tooltip: { theme: isDark ? 'dark' : 'light' },
+    states: { active: { filter: { type: 'darken', value: 0.7 } } },
+  });
 
-  const otsChartSeries = [{
-    name: 'Same-Day Bookings',
-    data: otsChartData.map(d => d.count)
-  }];
+  const barSeries = (data, name='Count') => [{ name, data: data.map(d => d.count) }];
 
-  // Arrivals Today chart options
-  const arrivalsChartOptions = {
-    ...getChartTheme(),
-    chart: { ...getChartTheme().chart, type: 'bar', height: 320 },
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '55%',
-        borderRadius: 8,
-        dataLabels: { position: 'top' }
-      }
-    },
-    dataLabels: {
-      enabled: true,
-      offsetY: -20,
-      style: {
-        fontSize: '13px',
-        fontWeight: 600,
-        colors: [isDarkMode ? '#f1f5f9' : '#1f2937']
-      }
-    },
-    xaxis: {
-      categories: arrivalsChartData.map(d => d.branch),
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b',
-          fontSize: '12px',
-          fontWeight: 500
-        }
-      }
-    },
-    yaxis: {
-      title: {
-        text: 'Arrivals',
-        style: { color: isDarkMode ? '#cbd5e1' : '#64748b', fontSize: '12px' }
-      }
-    },
-    colors: ['#8b5cf6'],
-    grid: { borderColor: isDarkMode ? '#334155' : '#e5e7eb', strokeDashArray: 4 }
-  };
-
-  const arrivalsChartSeries = [{
-    name: 'Arrivals',
-    data: arrivalsChartData.map(d => d.count)
-  }];
-
-  // Status breakdown for arrivals donut
-  const arrivalsStatusData = reports?.arrivalsToday?.byStatus
-    ? Object.entries(reports.arrivalsToday.byStatus).filter(([, v]) => v > 0)
-    : [];
-  const arrivalsStatusDonutOptions = {
-    ...getChartTheme(),
-    labels: arrivalsStatusData.map(([label]) => label),
-    colors: ['#10b981', '#6366f1'],
-    legend: { position: 'bottom', labels: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } },
-    dataLabels: { enabled: true, formatter: (val) => `${val.toFixed(1)}%`, style: { colors: ['#fff'] } },
-    plotOptions: { pie: { donut: { size: '60%' } } }
-  };
-  const arrivalsStatusDonutSeries = arrivalsStatusData.map(([, v]) => v);
-
-  // Bar chart options
-  const branchChartOptions = {
-    ...getChartTheme(),
-    chart: { ...getChartTheme().chart, type: 'bar', height: 350 },
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '65%',
-        borderRadius: 6,
-        dataLabels: { position: 'top' }
-      }
-    },
-    dataLabels: {
-      enabled: true,
-      offsetY: -20,
-      style: {
-        fontSize: '12px',
-        colors: [isDarkMode ? '#f1f5f9' : '#1f2937']
-      }
-    },
-    xaxis: {
-      categories: overallChartData.map(d => d.branch),
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b',
-          fontSize: '12px'
-        }
-      }
-    },
-    colors: ['#2563eb']
-  };
-
-  const branchChartSeries = [{
-    name: 'Bookings',
-    data: overallChartData.map(d => d.count)
-  }];
-
-  // Pie chart options
-  const tomorrowPieOptions = {
-    ...getChartTheme(),
-    labels: tomorrowChartData.map(d => d.branch),
-    colors: ['#2563eb', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'],
-    plotOptions: {
-      pie: {
-        donut: {
-          size: '65%',
-          labels: {
-            show: true,
-            name: { fontSize: '16px' },
-            value: { fontSize: '20px', fontWeight: 600 }
-          }
-        }
-      }
-    }
-  };
-
-  const tomorrowPieSeries = tomorrowChartData.map(d => d.count);
-
-  // Horizontal bar chart
-  const next7DaysChartOptions = {
-    ...getChartTheme(),
-    chart: { ...getChartTheme().chart, type: 'bar', height: 400 },
-    plotOptions: {
-      bar: {
-        horizontal: true,
-        columnWidth: '60%',
-        borderRadius: 4
-      }
-    },
-    xaxis: {
-      categories: next7DaysChartData.map(d => d.branch),
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b'
-        }
-      }
-    },
-    colors: ['#8b5cf6']
-  };
-
-  const next7DaysChartSeries = [{
-    name: 'Bookings',
-    data: next7DaysChartData.map(d => d.count)
-  }];
-
-  // Cancellations chart
-  const cancellationsChartOptions = {
-    ...getChartTheme(),
-    chart: { ...getChartTheme().chart, type: 'bar', height: 320 },
-    plotOptions: {
-      bar: { columnWidth: '60%', borderRadius: 4 }
-    },
-    xaxis: {
-      categories: cancellationsChartData.map(d => d.branch),
-      labels: {
-        style: {
-          colors: isDarkMode ? '#cbd5e1' : '#64748b',
-          fontSize: '11px'
-        },
-        rotate: -45
-      }
-    },
-    colors: ['#ef4444']
-  };
-
-  const cancellationsChartSeries = [{
-    name: 'Cancellations',
-    data: cancellationsChartData.map(d => d.count)
-  }];
-
-  // Stat card component
-  const StatCard = ({ id, icon: Icon, title, value, subtitle, trend, trendColor = '#10b981' }) => (
+  // Snap wrapper
+  const Snap = ({ id, children, className='' }) => (
     <div
-      className={`stat-card-premium${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has(id) ? ' snap-selected' : ''}`}
-      ref={el => { if (id) cardRefs.current[id] = el; }}
-      onClick={() => snapshotMode && id && toggleCardSelect(id)}
+      ref={el => { cardRefs.current[id] = el; }}
+      className={`dr-card ${className}${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has(id) ? ' snap-selected' : ''}`}
+      onClick={() => snapshotMode && toggleCardSelect(id)}
     >
-      {snapshotMode && (
-        <div className="snap-check">{selectedCards.has(id) ? '✓' : ''}</div>
-      )}
-      <div className="stat-card-header">
-        <div className="stat-icon-wrapper" style={{ background: trendColor + '15' }}>
-          <Icon size={24} style={{ color: trendColor }} />
-        </div>
-        {trend && <div className="stat-trend" style={{ color: trendColor }}>{trend}%</div>}
-      </div>
-      <div className="stat-card-body">
-        <h3>{title}</h3>
-        <p className="stat-value">{value}</p>
-        {subtitle && <p className="stat-subtitle">{subtitle}</p>}
-      </div>
+      {snapshotMode && <div className="snap-check">{selectedCards.has(id) ? '✓' : ''}</div>}
+      {children}
     </div>
+  );
+
+  // Big number card
+  const BigNum = ({ id, value, label, color='#3b82f6', onExpand }) => (
+    <Snap id={id} className="dr-bignum">
+      <div className="dr-bignum-label">{label}</div>
+      <div className="dr-bignum-value" style={{ color }}>{Number(value||0).toLocaleString()}</div>
+      {onExpand && (
+        <button className="dr-expand-btn" onClick={e => { e.stopPropagation(); onExpand(); }} title="View all bookings">
+          <FiMaximize2 size={15} />
+        </button>
+      )}
+    </Snap>
+  );
+
+  // Inline drill-down panel
+  const DrillDownPanel = ({ chartKey }) => {
+    if (!drillDown || drillDown.chartKey !== chartKey) return null;
+    return (
+      <div className="dr-drilldown">
+        <div className="dr-drilldown-header">
+          <div className="dr-drilldown-title">
+            <FiChevronDown size={16} />
+            <strong>{drillDown.branch}</strong>
+            {!drillDown.loading && (
+              <span className="dr-drilldown-count">{drillDown.bookings.length} booking{drillDown.bookings.length !== 1 ? 's' : ''}</span>
+            )}
+          </div>
+          <button className="dr-drilldown-close" onClick={() => setDrillDown(null)} title="Close">
+            <FiX size={15} />
+          </button>
+        </div>
+        {drillDown.loading ? (
+          <div className="dr-drilldown-msg">Loading bookings…</div>
+        ) : drillDown.bookings.length === 0 ? (
+          <div className="dr-drilldown-msg">No bookings found for {drillDown.branch}</div>
+        ) : (
+          <div className="dr-drilldown-table-wrap">
+            <table className="bookings-table">
+              <thead>
+                <tr>
+                  <th>Name</th><th>Date</th><th>Treatment</th><th>Status</th>
+                  <th>Contact</th><th>Price</th><th>Agent</th>
+                </tr>
+              </thead>
+              <tbody>
+                {drillDown.bookings.map((b, i) => (
+                  <tr key={i}>
+                    <td><strong>{b.firstName} {b.lastName}</strong></td>
+                    <td style={{ whiteSpace:'nowrap' }}>{b.date}</td>
+                    <td>{b.treatment}</td>
+                    <td><span className={`status-badge status-${(b.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{b.status}</span></td>
+                    <td className="contact-cell">
+                      <div className="contact-info">
+                        {b.phone && <a href={`tel:${b.phone}`} title={b.phone}><FiPhone size={13}/></a>}
+                        {b.email && <a href={`mailto:${b.email}`} title={b.email}><FiMail size={13}/></a>}
+                      </div>
+                    </td>
+                    <td>₱{Number(b.totalPrice||0).toLocaleString()}</td>
+                    <td>{b.agent}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const NoData = ({ msg='No data available' }) => (
+    <div className="dr-nodata"><FiAlertCircle size={28} /><span>{msg}</span></div>
   );
 
   if (!reports) return null;
 
-  const totalRevenue = (reports?.otsBookings?.revenue || 0) + (reports?.overallBookings?.revenue || 0);
-  const totalBookings = (reports?.otsBookings?.count || 0) + (reports?.overallBookings?.count || 0);
-  const avgValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
+  const otsData      = prepareBranchData(reports?.otsBookings?.byBranch);
+  const overallData  = prepareBranchData(reports?.overallBookings?.byBranch);
+  const tomorrowData = prepareBranchData(reports?.bookedTomorrow?.byBranch);
+  const next7Data    = prepareBranchData(reports?.bookedNext7Days?.byBranch);
+  const cancelData   = prepareBranchData(reports?.cancellations?.byBranch);
+  const arrivalsData = prepareBranchData(reports?.arrivalsToday?.byBranch);
+
+  const tomorrowTotal   = Object.values(reports?.bookedTomorrow?.byBranch || {}).reduce((s,v) => s + v.count, 0);
+  const next7Total      = Object.values(reports?.bookedNext7Days?.byBranch || {}).reduce((s,v) => s + v.count, 0);
+  const overallTomTotal = reports?.overallBookingsTomorrow?.count || 0;
+
+  const MODAL_LABELS = {
+    ots:'Same-Day Bookings', overall:'Overall Bookings', 'arrivals-today':'Arrivals Today',
+    tomorrow:'Tomorrow Bookings', next7days:'Next 7 Days', cancellations:'Cancellations',
+    'tomorrow-summary':'Tomorrow Summary'
+  };
 
   return (
     <>
       <Sidebar />
       <main className="daily-reports-container">
+
         {/* Header */}
         <div className="report-header">
           <div className="header-left">
             <h1 className="page-title">📊 Daily Reports</h1>
-            <p className="page-subtitle">Real-time booking analytics for today</p>
+            <p className="page-subtitle">
+              {new Date().toLocaleDateString('en-US',{ weekday:'long', year:'numeric', month:'long', day:'numeric' })}
+            </p>
           </div>
           <div className="header-right">
-            <button
-              onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }}
-              className={`btn-icon-primary${snapshotMode ? ' active' : ''}`}
-              title="Select cards to snapshot"
-            >
-              <FiCamera size={18} />
+            <span className="refresh-label">Updated {refreshAt.toLocaleTimeString()}</span>
+            <button className={`btn-icon-primary${snapshotMode ? ' active' : ''}`}
+              onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }} title="Snapshot mode">
+              <FiCamera size={16} />
             </button>
-            <button onClick={fetchDailyReports} className="btn-icon-primary">
-              <FiRefreshCw size={18} />
+            <button className="btn-icon-primary" onClick={fetchDailyReports} title="Refresh">
+              <FiRefreshCw size={16} />
             </button>
-            <div className="last-refresh">
-              <span className="refresh-label">Updated</span>
-              <span className="refresh-time">{refreshAt.toLocaleTimeString()}</span>
-            </div>
           </div>
         </div>
 
-        {error && (
-          <div className="alert alert-error">
-            <FiAlertCircle size={20} />
-            <span>{error}</span>
-          </div>
-        )}
+        {error && <div className="dr-error"><FiAlertCircle size={18} /> {error}</div>}
 
-        {/* Top Metrics */}
-        <div className="metrics-grid">
-          <StatCard
-            id="metric-sameday"
-            icon={FiCheckCircle}
-            title="Same-Day Bookings"
-            value={reports?.otsBookings?.count || 0}
-            subtitle={formatCurrency(reports?.otsBookings?.revenue || 0)}
-            trend={(((reports?.otsBookings?.count || 0) / (totalBookings || 1)) * 100).toFixed(0)}
-            trendColor="#2563eb"
-          />
-          <StatCard
-            id="metric-overall"
-            icon={FiCalendar}
-            title="Overall (7 Days)"
-            value={reports?.overallBookings?.count || 0}
-            subtitle={formatCurrency(reports?.overallBookings?.revenue || 0)}
-            trend={(((reports?.overallBookings?.count || 0) / (totalBookings || 1)) * 100).toFixed(0)}
-            trendColor="#8b5cf6"
-          />
-          <StatCard
-            id="metric-tomorrow"
-            icon={FiTrendingUp}
-            title="Tomorrow's Bookings"
-            value={Object.values(reports?.bookedTomorrow?.byBranch || {}).reduce((sum, b) => sum + b.count, 0)}
-            subtitle="scheduled appointments"
-            trend="20"
-            trendColor="#10b981"
-          />
-          <StatCard
-            id="metric-avg"
-            icon={FiDollarSign}
-            title="Avg. Booking Value"
-            value={formatCurrency(avgValue)}
-            subtitle="today's average"
-            trendColor="#f59e0b"
-          />
+        {/* Row 1 — OTS */}
+        <div className="dr-section">
+          <div className="dr-row">
+            <Snap id="chart-ots" className="dr-chart-wrap">
+              {otsData.length > 0
+                ? <ReactApexChart type="bar" height={320} options={barOptions(otsData,'OTS per Branch','ots',getOTSBookings)} series={barSeries(otsData,'OTS')} />
+                : <NoData msg="No OTS bookings today" />}
+            </Snap>
+            <BigNum id="big-ots" value={reports?.otsBookings?.count} label="OTS" color="#ec4899"
+              onExpand={() => handleExpandSection('ots')} />
+          </div>
+          <DrillDownPanel chartKey="ots" />
         </div>
 
-        {/* Charts Section */}
-        <div className="charts-container">
-            {/* 1. Overall Bookings */}
-          <div
-            className={`chart-card${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-overall') ? ' snap-selected' : ''}`}
-            ref={el => { cardRefs.current['chart-overall'] = el; }}
-            onClick={() => snapshotMode && toggleCardSelect('chart-overall')}
-          >
-            <div className="chart-header">
-              <div>
-                <h2>Overall Bookings by Branch</h2>
-                <p>Distribution across branches (7-day forecast)</p>
-              </div>
-              <button className="btn-expand" onClick={() => handleExpandSection('overall')} title="View Details">
-                <FiMaximize2 size={18} />
-              </button>
-            </div>
-            {overallChartData.length > 0 ? (
-              <ReactApexChart
-                options={branchChartOptions}
-                series={branchChartSeries}
-                type="bar"
-                height={350}
-              />
-            ) : (
-              <div className="no-data">
-                <FiBarChart2 size={40} />
-                <p>No bookings data available</p>
-              </div>
-            )}
+        {/* Row 2 — Overall */}
+        <div className="dr-section">
+          <div className="dr-row">
+            <Snap id="chart-overall" className="dr-chart-wrap">
+              {overallData.length > 0
+                ? <ReactApexChart type="bar" height={320} options={barOptions(overallData,'OVERALL per Branch','overall',getOverallBookings)} series={barSeries(overallData,'Overall')} />
+                : <NoData msg="No overall bookings" />}
+            </Snap>
+            <BigNum id="big-overall" value={reports?.overallBookings?.count} label="OVERALL" color="#3b82f6"
+              onExpand={() => handleExpandSection('overall')} />
           </div>
-
-          {/* 2. OTS (Same-Day) Bookings */}
-          <div
-            className={`chart-card full-width${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-ots') ? ' snap-selected' : ''}`}
-            ref={el => { cardRefs.current['chart-ots'] = el; }}
-            onClick={() => snapshotMode && toggleCardSelect('chart-ots')}
-          >
-            <div className="chart-header">
-              <div>
-                <h2>OTS (Same-Day) Bookings by Branch</h2>
-                <p>Created today & scheduled for today</p>
-              </div>
-              <button className="btn-expand" onClick={() => handleExpandSection('ots')} title="View Details">
-                <FiMaximize2 size={18} />
-              </button>
-            </div>
-            {otsChartData.length > 0 ? (
-              <ReactApexChart
-                options={otsChartOptions}
-                series={otsChartSeries}
-                type="bar"
-                height={350}
-              />
-            ) : (
-              <div className="no-data">
-                <FiBarChart2 size={40} />
-                <p>No OTS bookings today</p>
-              </div>
-            )}
-          </div>
-
-          {/* 1.5 Arrivals Today */}
-          <div
-            className={`chart-card full-width${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-arrivals') ? ' snap-selected' : ''}`}
-            ref={el => { cardRefs.current['chart-arrivals'] = el; }}
-            onClick={() => snapshotMode && toggleCardSelect('chart-arrivals')}
-          >
-            <div className="chart-header">
-              <div>
-                <h2>✅ Arrivals Today by Branch</h2>
-                <p>Customers who arrived for their appointment today</p>
-              </div>
-              <button className="btn-expand" onClick={() => handleExpandSection('arrivals-today')} title="View Details">
-                <FiMaximize2 size={18} />
-              </button>
-            </div>
-            <div className="ots-stats-row" style={{ marginBottom: '16px' }}>
-              <div className="ots-stat-badge" style={{ background: isDarkMode ? '#1e1b4b' : '#ede9fe', color: '#7c3aed' }}>
-                <span className="ots-badge-label">Total Arrivals</span>
-                <span className="ots-badge-value">{reports?.arrivalsToday?.count || 0}</span>
-              </div>
-              {Object.entries(reports?.arrivalsToday?.byStatus || {}).map(([status, count]) => (
-                count > 0 && (
-                  <div
-                    key={status}
-                    className="ots-stat-badge"
-                    style={{
-                      background: status === 'Arrived & bought'
-                        ? (isDarkMode ? '#064e3b' : '#d1fae5')
-                        : (isDarkMode ? '#1e1b4b' : '#e0e7ff'),
-                      color: status === 'Arrived & bought' ? '#059669' : '#4338ca'
-                    }}
-                  >
-                    <span className="ots-badge-label">{status}</span>
-                    <span className="ots-badge-value">{count}</span>
-                  </div>
-                )
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-              <div style={{ flex: '2 1 300px' }}>
-                {arrivalsChartData.length > 0 ? (
-                  <ReactApexChart
-                    options={arrivalsChartOptions}
-                    series={arrivalsChartSeries}
-                    type="bar"
-                    height={320}
-                  />
-                ) : (
-                  <div className="no-data">
-                    <FiBarChart2 size={40} />
-                    <p>No arrivals today</p>
-                  </div>
-                )}
-              </div>
-              {arrivalsStatusDonutSeries.length > 0 && (
-                <div style={{ flex: '1 1 220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ReactApexChart
-                    options={arrivalsStatusDonutOptions}
-                    series={arrivalsStatusDonutSeries}
-                    type="donut"
-                    height={240}
-                    width={240}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-        
-
-          {/* 3. Tomorrow's Schedule */}
-          <div
-            className={`chart-card${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-tomorrow') ? ' snap-selected' : ''}`}
-            ref={el => { cardRefs.current['chart-tomorrow'] = el; }}
-            onClick={() => snapshotMode && toggleCardSelect('chart-tomorrow')}
-          >
-            <div className="chart-header">
-              <div>
-                <h2>Tomorrow's Schedule by Branch</h2>
-                <p>Breakdown of tomorrow's appointments</p>
-              </div>
-              <button className="btn-expand" onClick={() => handleExpandSection('tomorrow')} title="View Details">
-                <FiMaximize2 size={18} />
-              </button>
-            </div>
-            {tomorrowChartData.length > 0 ? (
-              <ReactApexChart
-                options={tomorrowPieOptions}
-                series={tomorrowPieSeries}
-                type="donut"
-                height={320}
-              />
-            ) : (
-              <div className="no-data">
-                <FiPieChart size={40} />
-                <p>No appointments scheduled</p>
-              </div>
-            )}
-          </div>
-
-          {/* 4. Next 7 Days */}
-          <div
-            className={`chart-card full-width${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-next7') ? ' snap-selected' : ''}`}
-            ref={el => { cardRefs.current['chart-next7'] = el; }}
-            onClick={() => snapshotMode && toggleCardSelect('chart-next7')}
-          >
-            <div className="chart-header">
-              <div>
-                <h2>Next 7 Days Appointments by Branch</h2>
-                <p>All scheduled appointments for the next week</p>
-              </div>
-              <button className="btn-expand" onClick={() => handleExpandSection('next7days')} title="View Details">
-                <FiMaximize2 size={18} />
-              </button>
-            </div>
-            {next7DaysChartData.length > 0 ? (
-              <ReactApexChart
-                options={next7DaysChartOptions}
-                series={next7DaysChartSeries}
-                type="bar"
-                height={400}
-              />
-            ) : (
-              <div className="no-data">
-                <FiBarChart2 size={40} />
-                <p>No appointments scheduled</p>
-              </div>
-            )}
-          </div>
-
-          {/* 5. Cancellations */}
-          <div
-            className={`chart-card${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-cancellations') ? ' snap-selected' : ''}`}
-            ref={el => { cardRefs.current['chart-cancellations'] = el; }}
-            onClick={() => snapshotMode && toggleCardSelect('chart-cancellations')}
-          >
-            <div className="chart-header">
-              <div>
-                <h2>Cancellations Today</h2>
-                <p>Bookings cancelled today by branch</p>
-              </div>
-              <button className="btn-expand" onClick={() => handleExpandSection('cancellations')} title="View Details">
-                <FiMaximize2 size={18} />
-              </button>
-            </div>
-            {cancellationsChartData.length > 0 ? (
-              <ReactApexChart
-                options={cancellationsChartOptions}
-                series={cancellationsChartSeries}
-                type="bar"
-                height={320}
-              />
-            ) : (
-              <div className="no-data">
-                <FiBarChart2 size={40} />
-                <p>No cancellations today</p>
-              </div>
-            )}
-          </div>
-
-          {/* 6. Quick Insights */}
-          <div
-            className={`chart-card${snapshotMode ? ' snap-selectable' : ''}${selectedCards.has('chart-insights') ? ' snap-selected' : ''}`}
-            ref={el => { cardRefs.current['chart-insights'] = el; }}
-            onClick={() => snapshotMode && toggleCardSelect('chart-insights')}
-          >
-            <div className="chart-header">
-              <h2>Quick Insights</h2>
-              <p>Today's performance summary</p>
-            </div>
-            <div className="insights-list">
-              <div className="insight-row">
-                <span className="insight-label">Today's Revenue</span>
-                <span className="insight-value">{formatCurrency(totalRevenue)}</span>
-              </div>
-              <div className="insight-divider"></div>
-              <div className="insight-row">
-                <span className="insight-label">Total Bookings</span>
-                <span className="insight-value">{totalBookings}</span>
-              </div>
-              <div className="insight-divider"></div>
-              <div className="insight-row">
-                <span className="insight-label">Cancellations</span>
-                <span className="insight-value" style={{ color: '#ef4444' }}>
-                  {reports?.cancellations?.count || 0}
-                </span>
-              </div>
-              <div className="insight-divider"></div>
-              <div className="insight-row">
-                <span className="insight-label">Tomorrow Total</span>
-                <span className="insight-value">{reports?.overallBookingsTomorrow?.count || 0}</span>
-              </div>
-              <div className="insight-divider"></div>
-              <div className="insight-row">
-                <span className="insight-label">Expected Revenue</span>
-                <span className="insight-value">{formatCurrency(reports?.overallBookingsTomorrow?.revenue || 0)}</span>
-              </div>
-            </div>
-          </div>
+          <DrillDownPanel chartKey="overall" />
         </div>
 
-        {/* Bookings Details Modal */}
+        {/* Row 3 — Arrivals Today */}
+        <div className="dr-section">
+          <div className="dr-row">
+            <Snap id="chart-arrivals" className="dr-chart-wrap">
+              {arrivalsData.length > 0
+                ? <ReactApexChart type="bar" height={320} options={barOptions(arrivalsData,'Arrivals Today per Branch','arrivals-today',getArrivalsToday)} series={barSeries(arrivalsData,'Arrivals')} />
+                : <NoData msg="No arrivals today" />}
+            </Snap>
+            <BigNum id="big-arrivals" value={reports?.arrivalsToday?.count} label="ARRIVALS TODAY" color="#10b981"
+              onExpand={() => handleExpandSection('arrivals-today')} />
+          </div>
+          <DrillDownPanel chartKey="arrivals-today" />
+        </div>
+
+        {/* Row 4 — Booked Tomorrow */}
+        <div className="dr-section">
+          <div className="dr-row">
+            <Snap id="chart-tomorrow" className="dr-chart-wrap">
+              {tomorrowData.length > 0
+                ? <ReactApexChart type="bar" height={320} options={barOptions(tomorrowData,'Booked Tomorrow per Branch','tomorrow',getTomorrowBookings)} series={barSeries(tomorrowData,'Tomorrow')} />
+                : <NoData msg="No appointments tomorrow" />}
+            </Snap>
+            <BigNum id="big-tomorrow" value={tomorrowTotal} label="Total Booked Tomorrow" color="#f97316"
+              onExpand={() => handleExpandSection('tomorrow')} />
+          </div>
+          <DrillDownPanel chartKey="tomorrow" />
+        </div>
+
+        {/* Row 5 — Next 7 Days */}
+        <div className="dr-section">
+          <div className="dr-row">
+            <Snap id="chart-next7" className="dr-chart-wrap">
+              {next7Data.length > 0
+                ? <ReactApexChart type="bar" height={320} options={barOptions(next7Data,'Booked Next 7 Days per Branch','next7days',getNext7DaysBookings)} series={barSeries(next7Data,'Next 7 Days')} />
+                : <NoData msg="No bookings in next 7 days" />}
+            </Snap>
+            <BigNum id="big-next7" value={next7Total} label="Total Booked Next 7 Days" color="#8b5cf6"
+              onExpand={() => handleExpandSection('next7days')} />
+          </div>
+          <DrillDownPanel chartKey="next7days" />
+        </div>
+
+        {/* Row 6 — Cancellations */}
+        <div className="dr-section">
+          <div className="dr-row">
+            <Snap id="chart-cancellations" className="dr-chart-wrap">
+              {cancelData.length > 0
+                ? <ReactApexChart type="bar" height={320} options={barOptions(cancelData,'Cancellations per Branch','cancellations',getCancellations)} series={barSeries(cancelData,'Cancellations')} />
+                : <NoData msg="No cancellations today" />}
+            </Snap>
+            <BigNum id="big-cancellations" value={reports?.cancellations?.count} label="Total Cancellations" color="#ef4444"
+              onExpand={() => handleExpandSection('cancellations')} />
+          </div>
+          <DrillDownPanel chartKey="cancellations" />
+        </div>
+
+        {/* Row 7 — Overall Bookings Tomorrow */}
+        <div className="dr-section">
+          <div className="dr-row">
+            <Snap id="chart-overall-tomorrow" className="dr-chart-wrap">
+              {tomorrowData.length > 0
+                ? <ReactApexChart type="bar" height={320} options={barOptions(tomorrowData,'Overall Bookings Tomorrow','overall-tomorrow',getTomorrowSummary)} series={barSeries(tomorrowData,'Tomorrow')} />
+                : <NoData msg="No bookings tomorrow" />}
+            </Snap>
+            <BigNum id="big-overall-tomorrow" value={overallTomTotal} label="Overall Bookings Tomorrow" color="#06b6d4"
+              onExpand={() => handleExpandSection('tomorrow-summary')} />
+          </div>
+          <DrillDownPanel chartKey="overall-tomorrow" />
+        </div>
+
+        {/* Full-page Detail Modal */}
         {expandedSection && (
-          <div className="modal-overlay" onClick={handleCloseModal}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-overlay" onClick={() => { setExpandedSection(null); setModalBookings([]); }}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
-                <h2>{
-                  expandedSection === 'ots' ? 'Same-Day Bookings' :
-                  expandedSection === 'overall' ? 'Overall Bookings' :
-                  expandedSection === 'tomorrow' ? 'Tomorrow Bookings' :
-                  expandedSection === 'next7days' ? 'Next 7 Days Bookings' :
-                  expandedSection === 'cancellations' ? 'Cancellations' :
-                  expandedSection === 'tomorrow-summary' ? 'Tomorrow Summary' : 'Bookings'
-                }</h2>
-                <button className="modal-close-btn" onClick={handleCloseModal}>
+                <h2>{MODAL_LABELS[expandedSection] || 'Bookings'}</h2>
+                <button className="modal-close-btn" onClick={() => { setExpandedSection(null); setModalBookings([]); }}>
                   <FiX size={24} />
                 </button>
               </div>
-
               {modalLoading ? (
-                <div className="modal-loading">Loading bookings...</div>
+                <div className="modal-loading">Loading bookings…</div>
               ) : modalBookings.length === 0 ? (
-                <div className="modal-empty">No bookings found for this section</div>
+                <div className="modal-empty">No bookings found</div>
               ) : (
                 <div className="bookings-table-wrapper">
                   <table className="bookings-table">
                     <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Branch</th>
-                        <th>Date</th>
-                        <th>Treatment</th>
-                        <th>Contact</th>
-                        <th>Status</th>
-                        <th>Price</th>
-                        <th>Agent</th>
-                      </tr>
+                      <tr><th>Name</th><th>Branch</th><th>Date</th><th>Treatment</th><th>Contact</th><th>Status</th><th>Price</th><th>Agent</th></tr>
                     </thead>
                     <tbody>
-                      {modalBookings.map((booking, idx) => (
-                        <tr key={idx}>
-                          <td className="name-cell">
-                            <strong>{booking.firstName} {booking.lastName}</strong>
-                          </td>
-                          <td>{booking.branch}</td>
-                          <td>{booking.date}</td>
-                          <td>{booking.treatment}</td>
+                      {modalBookings.map((b, i) => (
+                        <tr key={i}>
+                          <td><strong>{b.firstName} {b.lastName}</strong></td>
+                          <td>{b.branch}</td><td>{b.date}</td><td>{b.treatment}</td>
                           <td className="contact-cell">
                             <div className="contact-info">
-                              {booking.phone && (
-                                <a href={`tel:${booking.phone}`} title={booking.phone}>
-                                  <FiPhone size={14} />
-                                </a>
-                              )}
-                              {booking.email && (
-                                <a href={`mailto:${booking.email}`} title={booking.email}>
-                                  <FiMail size={14} />
-                                </a>
-                              )}
+                              {b.phone && <a href={`tel:${b.phone}`} title={b.phone}><FiPhone size={14}/></a>}
+                              {b.email && <a href={`mailto:${b.email}`} title={b.email}><FiMail size={14}/></a>}
                             </div>
                           </td>
-                          <td>
-                            <span className={`status-badge status-${booking.status.toLowerCase().replace(/\s+/g, '-')}`}>
-                              {booking.status}
-                            </span>
-                          </td>
-                          <td className="price-cell">
-                            <strong>{formatCurrency(booking.totalPrice)}</strong>
-                          </td>
-                          <td>{booking.agent}</td>
+                          <td><span className={`status-badge status-${(b.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{b.status}</span></td>
+                          <td><strong>₱{Number(b.totalPrice||0).toLocaleString()}</strong></td>
+                          <td>{b.agent}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -923,23 +436,18 @@ const DailyReports = () => {
             </div>
           </div>
         )}
-        {/* Snapshot floating bar */}
+
+        {/* Snapshot bar */}
         {snapshotMode && (
           <div className="snapshot-bar">
-            <span className="snapshot-bar-info">
-              <FiCamera size={15} />
-              {selectedCards.size === 0 ? 'Click cards to select' : `${selectedCards.size} card${selectedCards.size > 1 ? 's' : ''} selected`}
+            <span className="snapshot-bar-info"><FiCamera size={14} />
+              {selectedCards.size === 0 ? 'Click cards to select' : `${selectedCards.size} selected`}
             </span>
             <button className="snapshot-bar-btn outline" onClick={selectAll}>Select all</button>
-            <button
-              className="snapshot-bar-btn primary"
-              disabled={selectedCards.size === 0 || downloading}
-              onClick={downloadSelected}
-            >
-              <FiDownload size={14} />
-              {downloading ? 'Saving…' : 'Download PNG'}
+            <button className="snapshot-bar-btn primary" disabled={selectedCards.size===0||downloading} onClick={downloadSelected}>
+              <FiDownload size={13}/>{downloading ? 'Saving…' : 'Download PNG'}
             </button>
-            <button className="snapshot-bar-btn cancel" onClick={clearSelection}><FiX size={14} /></button>
+            <button className="snapshot-bar-btn cancel" onClick={clearSelection}><FiX size={13}/></button>
           </div>
         )}
 

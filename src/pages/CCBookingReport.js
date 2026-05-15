@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import html2canvas from 'html2canvas';
-import { FiRefreshCw, FiCamera, FiDownload, FiX, FiAlertCircle } from 'react-icons/fi';
+import { FiRefreshCw, FiCamera, FiDownload, FiX, FiAlertCircle, FiChevronDown, FiPhone, FiMail } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
-import api from '../services/api';
+import api, { getCCReportDrilldown } from '../services/api';
 import './CCBookingReport.css';
 
 const CHART_COLORS = [
@@ -27,6 +27,10 @@ export default function CCBookingReport() {
   const [selectedCards, setSelectedCards] = useState(new Set());
   const [downloading, setDownloading]     = useState(false);
   const cardRefs = useRef({});
+
+  // Drill-down
+  const [drillDown, setDrillDown]   = useState(null);
+  const bookingsCache = useRef({});
 
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -74,6 +78,33 @@ export default function CCBookingReport() {
       }
     } finally { setDownloading(false); }
   }, [selectedCards]);
+
+  // ── Drill-down handler ──────────────────────────────────────────────────
+  const handleBarClick = async (chartKey, clickedValue, section, filterType = 'branch') => {
+    if (drillDown?.chartKey === chartKey && drillDown?.filterValue === clickedValue) {
+      setDrillDown(null); return;
+    }
+    setDrillDown({ chartKey, filterValue: clickedValue, filterType, bookings: [], loading: true });
+    try {
+      let all = bookingsCache.current[chartKey];
+      if (!all) {
+        const res = await getCCReportDrilldown(section);
+        all = res.data?.bookings || [];
+        bookingsCache.current[chartKey] = all;
+      }
+      let filtered;
+      if (filterType === 'payMode') {
+        const kw = clickedValue.toLowerCase().includes('cash') ? 'cash'
+                 : clickedValue.toLowerCase().includes('debit') ? 'debit' : 'credit';
+        filtered = all.filter(b => (b.paymentMode || '').toLowerCase().includes(kw));
+      } else {
+        filtered = all.filter(b => (b.branch || '').toLowerCase() === clickedValue.toLowerCase());
+      }
+      setDrillDown({ chartKey, filterValue: clickedValue, filterType, bookings: filtered, loading: false });
+    } catch {
+      setDrillDown({ chartKey, filterValue: clickedValue, filterType, bookings: [], loading: false });
+    }
+  };
 
   // ── Chart helpers ────────────────────────────────────────────────────────
   const baseChart = (title) => ({
@@ -154,16 +185,89 @@ export default function CCBookingReport() {
     colors: ['#10b981', '#3b82f6', '#8b5cf6'],
   };
 
-  const barOptions = (cats, colors, title) => ({
-    ...baseChart(title),
-    plotOptions: { bar: { borderRadius: 5, distributed: true, columnWidth: '55%',
-      dataLabels: { position: 'top' } } },
-    dataLabels: { enabled: true, style: { fontSize: '11px', fontWeight: 600,
-      colors: [isDark ? '#e2e8f0' : '#1e293b'] }, offsetY: -18 },
-    colors,
-    legend: { show: false },
-    xaxis: { ...baseChart(title).xaxis, categories: cats },
-  });
+  const barOptions = (cats, colors, title, chartKey = null, section = null, filterType = 'branch') => {
+    const base = baseChart(title);
+    return {
+      ...base,
+      chart: {
+        ...base.chart,
+        ...(chartKey ? {
+          events: {
+            dataPointSelection: (_ev, _ctx, config) => {
+              const val = cats[config.dataPointIndex];
+              if (val) handleBarClick(chartKey, val, section, filterType);
+            }
+          }
+        } : {})
+      },
+      plotOptions: { bar: { borderRadius: 5, distributed: true, columnWidth: '55%',
+        dataLabels: { position: 'top' }, cursor: 'pointer' } },
+      dataLabels: { enabled: true, style: { fontSize: '11px', fontWeight: 600,
+        colors: [isDark ? '#e2e8f0' : '#1e293b'] }, offsetY: -18 },
+      colors,
+      legend: { show: false },
+      xaxis: { ...base.xaxis, categories: cats },
+      states: { active: { filter: { type: 'darken', value: 0.7 } } },
+    };
+  };
+
+  // ── Drill-down panel ──────────────────────────────────────────────────────
+  const DrillDownPanel = ({ chartKey }) => {
+    if (!drillDown || drillDown.chartKey !== chartKey) return null;
+    return (
+      <div className="dr-drilldown">
+        <div className="dr-drilldown-header">
+          <div className="dr-drilldown-title">
+            <FiChevronDown size={16} />
+            <strong>{drillDown.filterValue}</strong>
+            {!drillDown.loading && (
+              <span className="dr-drilldown-count">
+                {drillDown.bookings.length} booking{drillDown.bookings.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          <button className="dr-drilldown-close" onClick={() => setDrillDown(null)} title="Close">
+            <FiX size={15} />
+          </button>
+        </div>
+        {drillDown.loading ? (
+          <div className="dr-drilldown-msg">Loading bookings…</div>
+        ) : drillDown.bookings.length === 0 ? (
+          <div className="dr-drilldown-msg">No bookings found for {drillDown.filterValue}</div>
+        ) : (
+          <div className="dr-drilldown-table-wrap">
+            <table className="bookings-table">
+              <thead>
+                <tr>
+                  <th>Name</th><th>Branch</th><th>Date</th><th>Treatment</th>
+                  <th>Status</th><th>Contact</th><th>Price</th><th>Agent</th>
+                </tr>
+              </thead>
+              <tbody>
+                {drillDown.bookings.map((b, idx) => (
+                  <tr key={idx}>
+                    <td><strong>{b.firstName} {b.lastName}</strong></td>
+                    <td>{b.branch}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{b.date}</td>
+                    <td>{b.treatment}</td>
+                    <td><span className={`status-badge status-${(b.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{b.status}</span></td>
+                    <td className="contact-cell">
+                      <div className="contact-info">
+                        {b.phone && <a href={`tel:${b.phone}`} title={b.phone}><FiPhone size={13}/></a>}
+                        {b.email && <a href={`mailto:${b.email}`} title={b.email}><FiMail size={13}/></a>}
+                      </div>
+                    </td>
+                    <td>₱{Number(b.totalPrice||0).toLocaleString()}</td>
+                    <td>{b.agent}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -198,106 +302,124 @@ export default function CCBookingReport() {
         )}
 
         {/* ── Row 1: Total Schedules Today ─────────────────────────── */}
-        <div className="ccr-row">
-          <Snap id="chart-today" className="ccr-chart-wrap">
-            <ReactApexChart
-              type="bar" height={320}
-              options={barOptions(todayChart.categories, todayChart.colors, 'Total Schedules Today per Branch')}
-              series={todayChart.series}
+        <div className="ccr-section">
+          <div className="ccr-row">
+            <Snap id="chart-today" className="ccr-chart-wrap">
+              <ReactApexChart
+                type="bar" height={320}
+                options={barOptions(todayChart.categories, todayChart.colors, 'Total Schedules Today per Branch', 'today', 'schedules-today')}
+                series={todayChart.series}
+              />
+            </Snap>
+            <BigNum
+              id="big-today"
+              label="Total Schedules Today"
+              total={totalSchedulesToday.total}
+              left={totalSchedulesToday.ots}         leftLabel="OTS"
+              right={totalSchedulesToday.additional}  rightLabel="Additional"
+              color="#3b82f6"
             />
-          </Snap>
-          <BigNum
-            id="big-today"
-            label="Total Schedules Today"
-            total={totalSchedulesToday.total}
-            left={totalSchedulesToday.ots}         leftLabel="OTS"
-            right={totalSchedulesToday.additional}  rightLabel="Additional"
-            color="#3b82f6"
-          />
+          </div>
+          <DrillDownPanel chartKey="today" />
         </div>
 
         {/* ── Row 2: Total Arrivals Today ──────────────────────────── */}
-        <div className="ccr-row">
-          <Snap id="chart-arrivals" className="ccr-chart-wrap">
-            <ReactApexChart
-              type="bar" height={320}
-              options={barOptions(arrivalsChart.categories, arrivalsChart.colors, 'Total Arrivals per Branch')}
-              series={arrivalsChart.series}
+        <div className="ccr-section">
+          <div className="ccr-row">
+            <Snap id="chart-arrivals" className="ccr-chart-wrap">
+              <ReactApexChart
+                type="bar" height={320}
+                options={barOptions(arrivalsChart.categories, arrivalsChart.colors, 'Total Arrivals per Branch', 'arrivals', 'arrivals')}
+                series={arrivalsChart.series}
+              />
+            </Snap>
+            <BigNum
+              id="big-arrivals"
+              label="Total Arrivals Today"
+              total={totalArrivalsToday.total}
+              left={totalArrivalsToday.otsArrivals}        leftLabel="Arrived OTS"
+              right={totalArrivalsToday.additionalArrivals} rightLabel="Additional"
+              color="#10b981"
             />
-          </Snap>
-          <BigNum
-            id="big-arrivals"
-            label="Total Arrivals Today"
-            total={totalArrivalsToday.total}
-            left={totalArrivalsToday.otsArrivals}        leftLabel="Arrived OTS"
-            right={totalArrivalsToday.additionalArrivals} rightLabel="Additional"
-            color="#10b981"
-          />
+          </div>
+          <DrillDownPanel chartKey="arrivals" />
         </div>
 
         {/* ── Row 3: Total Schedules Tomorrow ─────────────────────── */}
-        <div className="ccr-row">
-          <Snap id="chart-tomorrow" className="ccr-chart-wrap">
-            <ReactApexChart
-              type="bar" height={320}
-              options={barOptions(tomorrowChart.categories, tomorrowChart.colors, 'Total Sched For Tomorrow per Branch')}
-              series={tomorrowChart.series}
+        <div className="ccr-section">
+          <div className="ccr-row">
+            <Snap id="chart-tomorrow" className="ccr-chart-wrap">
+              <ReactApexChart
+                type="bar" height={320}
+                options={barOptions(tomorrowChart.categories, tomorrowChart.colors, 'Total Sched For Tomorrow per Branch', 'tomorrow', 'schedules-tomorrow')}
+                series={tomorrowChart.series}
+              />
+            </Snap>
+            <BigNum
+              id="big-tomorrow"
+              label="Total Schedules for Tomorrow"
+              total={totalSchedulesTomorrow.total}
+              left={totalSchedulesTomorrow.otsTomorrow}        leftLabel="OTS for Tomorrow"
+              right={totalSchedulesTomorrow.additionalTomorrow} rightLabel="Additional"
+              color="#8b5cf6"
             />
-          </Snap>
-          <BigNum
-            id="big-tomorrow"
-            label="Total Schedules for Tomorrow"
-            total={totalSchedulesTomorrow.total}
-            left={totalSchedulesTomorrow.otsTomorrow}        leftLabel="OTS for Tomorrow"
-            right={totalSchedulesTomorrow.additionalTomorrow} rightLabel="Additional"
-            color="#8b5cf6"
-          />
+          </div>
+          <DrillDownPanel chartKey="tomorrow" />
         </div>
 
         {/* ── Row 4: Payment Modes for Tomorrow (full width) ────────── */}
-        <div className="ccr-row ccr-row-full">
-          <Snap id="chart-payment" className="ccr-chart-wrap ccr-full">
-            <ReactApexChart
-              type="bar" height={300}
-              options={barOptions(payChart.categories, payChart.colors, 'Modes of Payment For Tomorrow')}
-              series={payChart.series}
-            />
-          </Snap>
+        <div className="ccr-section">
+          <div className="ccr-row ccr-row-full">
+            <Snap id="chart-payment" className="ccr-chart-wrap ccr-full">
+              <ReactApexChart
+                type="bar" height={300}
+                options={barOptions(payChart.categories, payChart.colors, 'Modes of Payment For Tomorrow', 'payment', 'payment-tomorrow', 'payMode')}
+                series={payChart.series}
+              />
+            </Snap>
+          </div>
+          <DrillDownPanel chartKey="payment" />
         </div>
 
         {/* ── Row 5: Next 7 Days ────────────────────────────────────── */}
-        <div className="ccr-row">
-          <Snap id="chart-next7" className="ccr-chart-wrap">
-            <ReactApexChart
-              type="bar" height={320}
-              options={barOptions(next7Chart.categories, next7Chart.colors, 'Total Schedules for the Next 7 Days')}
-              series={next7Chart.series}
+        <div className="ccr-section">
+          <div className="ccr-row">
+            <Snap id="chart-next7" className="ccr-chart-wrap">
+              <ReactApexChart
+                type="bar" height={320}
+                options={barOptions(next7Chart.categories, next7Chart.colors, 'Total Schedules for the Next 7 Days', 'next7', 'next7days')}
+                series={next7Chart.series}
+              />
+            </Snap>
+            <BigNum
+              id="big-next7"
+              label="Total Schedules for the Next 7 Days"
+              total={totalSchedulesNext7.total}
+              left={totalSchedulesNext7.otsNext7}        leftLabel="OTS Next 7 Days"
+              right={totalSchedulesNext7.additionalNext7} rightLabel="Additional"
+              color="#f59e0b"
             />
-          </Snap>
-          <BigNum
-            id="big-next7"
-            label="Total Schedules for the Next 7 Days"
-            total={totalSchedulesNext7.total}
-            left={totalSchedulesNext7.otsNext7}        leftLabel="OTS Next 7 Days"
-            right={totalSchedulesNext7.additionalNext7} rightLabel="Additional"
-            color="#f59e0b"
-          />
+          </div>
+          <DrillDownPanel chartKey="next7" />
         </div>
 
         {/* ── Row 6: Total OTS ─────────────────────────────────────── */}
-        <div className="ccr-row">
-          <Snap id="chart-ots" className="ccr-chart-wrap">
-            <ReactApexChart
-              type="bar" height={320}
-              options={barOptions(otsChart.categories, otsChart.colors, 'Total OTS (Today + Tomorrow + Next 7 Days)')}
-              series={otsChart.series}
-            />
-          </Snap>
-          <Snap id="big-ots" className="ccr-bignum-card ccr-ots-total">
-            <div className="ccr-ots-label">Total OTS</div>
-            <div className="ccr-ots-num">{formatNum(totalOTS.total)}</div>
-            <div className="ccr-ots-sub">Today + Tomorrow + Next 7 Days</div>
-          </Snap>
+        <div className="ccr-section">
+          <div className="ccr-row">
+            <Snap id="chart-ots" className="ccr-chart-wrap">
+              <ReactApexChart
+                type="bar" height={320}
+                options={barOptions(otsChart.categories, otsChart.colors, 'Total OTS (Today + Tomorrow + Next 7 Days)', 'ots', 'ots')}
+                series={otsChart.series}
+              />
+            </Snap>
+            <Snap id="big-ots" className="ccr-bignum-card ccr-ots-total">
+              <div className="ccr-ots-label">Total OTS</div>
+              <div className="ccr-ots-num">{formatNum(totalOTS.total)}</div>
+              <div className="ccr-ots-sub">Today + Tomorrow + Next 7 Days</div>
+            </Snap>
+          </div>
+          <DrillDownPanel chartKey="ots" />
         </div>
 
         {/* Snapshot floating bar */}
