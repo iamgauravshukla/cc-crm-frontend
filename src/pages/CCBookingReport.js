@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import api, { getCCReportDrilldown } from '../services/api';
+import ScrollableTable from '../components/ScrollableTable';
 import './CCBookingReport.css';
 
 const CHART_COLORS = [
@@ -235,7 +236,7 @@ export default function CCBookingReport() {
         ) : drillDown.bookings.length === 0 ? (
           <div className="dr-drilldown-msg">No bookings found for {drillDown.filterValue}</div>
         ) : (
-          <div className="dr-drilldown-table-wrap">
+          <ScrollableTable className="dr-drilldown-table-wrap">
             <table className="bookings-table">
               <thead>
                 <tr>
@@ -263,7 +264,7 @@ export default function CCBookingReport() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollableTable>
         )}
       </div>
     );

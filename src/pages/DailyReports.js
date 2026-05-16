@@ -6,6 +6,7 @@ import ReactApexChart from 'react-apexcharts';
 import html2canvas from 'html2canvas';
 import { FiRefreshCw, FiAlertCircle, FiX, FiMaximize2, FiPhone, FiMail, FiCamera, FiDownload, FiChevronDown } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
+import ScrollableTable from '../components/ScrollableTable';
 import './DailyReports.css';
 
 const BRANCH_COLORS = [
@@ -212,7 +213,7 @@ const DailyReports = () => {
         ) : drillDown.bookings.length === 0 ? (
           <div className="dr-drilldown-msg">No bookings found for {drillDown.branch}</div>
         ) : (
-          <div className="dr-drilldown-table-wrap">
+          <ScrollableTable className="dr-drilldown-table-wrap">
             <table className="bookings-table">
               <thead>
                 <tr>
@@ -239,7 +240,7 @@ const DailyReports = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+          </ScrollableTable>
         )}
       </div>
     );
@@ -408,7 +409,7 @@ const DailyReports = () => {
               ) : modalBookings.length === 0 ? (
                 <div className="modal-empty">No bookings found</div>
               ) : (
-                <div className="bookings-table-wrapper">
+                <ScrollableTable className="bookings-table-wrapper">
                   <table className="bookings-table">
                     <thead>
                       <tr><th>Name</th><th>Branch</th><th>Date</th><th>Treatment</th><th>Contact</th><th>Status</th><th>Price</th><th>Agent</th></tr>
@@ -431,7 +432,7 @@ const DailyReports = () => {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ScrollableTable>
               )}
             </div>
           </div>

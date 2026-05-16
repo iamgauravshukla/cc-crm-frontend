@@ -4,6 +4,7 @@ import html2canvas from 'html2canvas';
 import { getOldBookings, deleteBooking } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
+import ScrollableTable from '../components/ScrollableTable';
 
 // Custom hook for debouncing
 function useDebounce(value, delay) {
@@ -702,7 +703,7 @@ function OldBookings() {
         ) : (
           <>
             {viewMode === 'table' ? (
-              <div className="table-container">
+              <ScrollableTable className="table-container">
                 <table className="bookings-table">
                   <thead>
                     <tr>
@@ -739,7 +740,7 @@ function OldBookings() {
                   </thead>
                   <tbody>
                     {bookings.map((booking, index) => (
-                      <tr key={index}>
+                      <tr key={index} className={(booking.status || '').toLowerCase() === 'promo hunter' ? 'promo-hunter-row' : ''}>
                         <td>
                           <button 
                             className="edit-btn-icon"
@@ -832,14 +833,17 @@ function OldBookings() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ScrollableTable>
             ) : (
               <div className="bookings-cards-grid">
                 {bookings.map((booking, index) => (
-                  <div key={index} className="booking-card" ref={el => cardRefs.current[index] = el}>
+                  <div key={index} className={`booking-card${(booking.status || '').toLowerCase() === 'promo hunter' ? ' promo-hunter-card' : ''}`} ref={el => cardRefs.current[index] = el}>
                     <div className="booking-card-header">
                       <div className="card-header-left">
                         <h3>{booking.firstName} {booking.lastName}</h3>
+                        {(booking.status || '').toLowerCase() === 'promo hunter' && (
+                          <span className="promo-hunter-badge-inline">🎯 Promo Hunter</span>
+                        )}
                         <span className="card-date">{booking.date || '-'} • {booking.timestamp ? new Date(booking.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                       </div>
                       <div className="card-header-right">

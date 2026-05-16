@@ -299,7 +299,7 @@ body.sidebar-collapsed .daily-reports-container {
 }
 
 .bookings-table-wrapper {
-  overflow: auto;
+  overflow-x: scroll;
   flex: 1;
   padding: 0;
   scrollbar-width: thin;
@@ -471,7 +471,7 @@ body.sidebar-collapsed .daily-reports-container {
 }
 
 .dr-drilldown-table-wrap {
-  overflow-x: auto;
+  overflow-x: scroll;
   max-height: 320px;
   overflow-y: auto;
   scrollbar-width: thin;

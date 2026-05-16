@@ -344,7 +344,7 @@ body.sidebar-collapsed .ccr-container {
 }
 
 .dr-drilldown-table-wrap {
-  overflow-x: auto;
+  overflow-x: scroll;
   max-height: 340px;
   overflow-y: auto;
   scrollbar-width: thin;

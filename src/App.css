@@ -1082,7 +1082,7 @@ body.sidebar-collapsed .main-content {
 .table-container {
   background: var(--card-bg);
   border-radius: 12px;
-  overflow-x: auto;
+  overflow-x: scroll;
   overflow-y: visible;
   box-shadow: 0 2px 12px var(--card-shadow);
   max-width: 100%;
@@ -1114,6 +1114,43 @@ body.sidebar-collapsed .main-content {
 .table-container::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* ── Dual-scroll wrapper (top + bottom scrollbar) ───────────────────────── */
+.dual-scroll-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.dual-scroll-top {
+  overflow-x: scroll;
+  overflow-y: hidden;
+  height: 14px;         /* just enough to render the scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #2563eb var(--bg-tertiary);
+}
+
+.dual-scroll-top::-webkit-scrollbar {
+  height: 10px;
+}
+
+.dual-scroll-top::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  margin: 0 6px;
+}
+
+.dual-scroll-top::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #2563eb, #1e40af);
+  border-radius: 10px;
+  border: 2px solid var(--bg-tertiary);
+}
+
+.dual-scroll-top::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, #1d4ed8, #1e3a8a);
+}
+
+.dual-scroll-top::-webkit-scrollbar-corner { background: transparent; }
 
 .bookings-table {
   width: 100%;
@@ -1211,6 +1248,49 @@ body.sidebar-collapsed .main-content {
 .status-promo-hunter {
   background-color: #f3e5f5;
   color: #7b1fa2;
+}
+
+/* ── Promo Hunter row/card highlights ───────────────────────────────────── */
+.promo-hunter-row {
+  background: linear-gradient(90deg, rgba(243,229,245,0.55) 0%, transparent 100%) !important;
+  border-left: 3px solid #7b1fa2;
+}
+.promo-hunter-row:hover {
+  background: linear-gradient(90deg, rgba(243,229,245,0.85) 0%, rgba(243,229,245,0.3) 100%) !important;
+}
+.dark .promo-hunter-row {
+  background: linear-gradient(90deg, rgba(91,33,182,0.18) 0%, transparent 100%) !important;
+  border-left: 3px solid #a78bfa;
+}
+.dark .promo-hunter-row:hover {
+  background: linear-gradient(90deg, rgba(91,33,182,0.32) 0%, rgba(91,33,182,0.1) 100%) !important;
+}
+.promo-hunter-card {
+  border: 1.5px solid #9c27b0 !important;
+  box-shadow: 0 2px 8px rgba(156,39,176,0.18) !important;
+}
+.promo-hunter-card .booking-card-header {
+  background: linear-gradient(135deg, #f3e5f5 0%, #ede7f6 100%);
+}
+.dark .promo-hunter-card .booking-card-header {
+  background: linear-gradient(135deg, rgba(91,33,182,0.22) 0%, rgba(124,58,237,0.12) 100%);
+}
+.promo-hunter-badge-inline {
+  display: inline-block;
+  background: #f3e5f5;
+  color: #7b1fa2;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 10px;
+  border: 1px solid #ce93d8;
+  margin-bottom: 4px;
+  letter-spacing: 0.3px;
+}
+.dark .promo-hunter-badge-inline {
+  background: rgba(91,33,182,0.25);
+  color: #d8b4fe;
+  border-color: rgba(167,139,250,0.4);
 }
 
 /* Refund - Dark Red */
