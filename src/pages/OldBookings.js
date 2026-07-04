@@ -286,7 +286,7 @@ function OldBookings() {
   };
 
   const canApplyFilter = () => {
-    if (!builderField || !builderValue && builderValues.length === 0) return false;
+    if (!builderField || (!builderValue && builderValues.length === 0)) return false;
     const cfg = getFieldConfig(builderField);
     if (cfg?.multiSelect) return builderValues.length > 0;
     if (!builderValue) return false;
@@ -373,9 +373,24 @@ function OldBookings() {
 
   const handleEditClick = (booking) => {
     setEditingBooking(booking);
+    // Parse stored "YYYY-MM-DD" date and "H:MM AM/PM" time into native input formats
+    const dateVal = booking.date || '';
+    // Convert "H:MM AM/PM" → "HH:MM" for time input
+    const timeVal = (() => {
+      if (!booking.time) return '';
+      const m = booking.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (!m) return '';
+      let h = parseInt(m[1], 10);
+      const mn = m[2];
+      const ap = m[3].toUpperCase();
+      if (ap === 'PM' && h !== 12) h += 12;
+      if (ap === 'AM' && h === 12) h = 0;
+      return `${String(h).padStart(2, '0')}:${mn}`;
+    })();
     setEditFormData({
       rowNumber: booking.rowNumber,
-      dateTime: booking.date || '', // Combined date and time
+      date: dateVal,
+      time: timeVal,
       branch: booking.branch || '',
       status: booking.status || '',
       firstName: booking.firstName || '',
@@ -393,13 +408,19 @@ function OldBookings() {
       agent: booking.agent || '',
       bookingDetails: booking.bookingDetails || '',
       adInteracted: booking.adInteracted || '',
+      remarks: booking.remarks || '',
+      purchaseDetails: booking.purchaseDetails || '',
       companionFirstName: booking.companionFirstName || '',
       companionLastName: booking.companionLastName || '',
       companionAge: booking.companionAge || '',
       companionGender: booking.companionGender || '',
       companionTreatment: booking.companionTreatment || '',
       companionFreebie: booking.companionFreebie || '',
-      companionArea: booking.companionArea || ''
+      companionArea: booking.companionArea || '',
+      isOts: booking.isOts || false,
+      isAdId: booking.isAdId || false,
+      isCompanion: booking.isCompanion || false,
+      isHighPriority: booking.isHighPriority || false,
     });
     setUpdateError('');
     setUpdateSuccess('');
@@ -407,10 +428,10 @@ function OldBookings() {
   };
 
   const handleEditFormChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setEditFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -726,6 +747,7 @@ function OldBookings() {
                       <th>Email</th>
                       <th>Agent</th>
                       <th>Booking Details</th>
+                      <th>Remarks</th>
                       <th>Ad Interacted</th>
                       <th>Companion First Name</th>
                       <th>Companion Last Name</th>
@@ -785,6 +807,7 @@ function OldBookings() {
                         <td>{booking.email || '-'}</td>
                         <td>{booking.agent || '-'}</td>
                         <td><span className="booking-details-cell" title={booking.bookingDetails || ''}>{booking.bookingDetails ? (booking.bookingDetails.length > 30 ? booking.bookingDetails.substring(0, 30) + '...' : booking.bookingDetails) : '-'}</span></td>
+                        <td><span className="booking-details-cell" title={booking.remarks || ''}>{booking.remarks ? (booking.remarks.length > 30 ? booking.remarks.substring(0, 30) + '...' : booking.remarks) : '-'}</span></td>
                         <td>{booking.adInteracted || '-'}</td>
                         <td>{booking.companionFirstName || '-'}</td>
                         <td>{booking.companionLastName || '-'}</td>
@@ -967,10 +990,33 @@ function OldBookings() {
                         </div>
                       )}
 
+                      {(booking.isOts || booking.isAdId || booking.isCompanion || booking.isHighPriority) && (
+                        <div className="card-section">
+                          <h4>Identifiers</h4>
+                          <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
+                            {booking.isOts         && <span className="val-badge" style={{background:'#0ea5e9',color:'#fff'}}>OTS</span>}
+                            {booking.isAdId        && <span className="val-badge" style={{background:'#8b5cf6',color:'#fff'}}>Ad ID</span>}
+                            {booking.isCompanion   && <span className="val-badge" style={{background:'#f59e0b',color:'#fff'}}>Companion</span>}
+                            {booking.isHighPriority && <span className="val-badge" style={{background:'#ef4444',color:'#fff'}}>High Priority</span>}
+                          </div>
+                        </div>
+                      )}
                       {booking.bookingDetails && (
                         <div className="card-section">
                           <h4>Booking Details</h4>
                           <p className="booking-details-text">{booking.bookingDetails}</p>
+                        </div>
+                      )}
+                      {booking.remarks && (
+                        <div className="card-section">
+                          <h4>Remarks</h4>
+                          <p className="booking-details-text">{booking.remarks}</p>
+                        </div>
+                      )}
+                      {booking.purchaseDetails && (
+                        <div className="card-section">
+                          <h4>Purchase Details</h4>
+                          <p className="booking-details-text">{booking.purchaseDetails}</p>
                         </div>
                       )}
                     </div>
@@ -1019,17 +1065,26 @@ function OldBookings() {
 
               <form onSubmit={handleUpdateBooking} className="edit-booking-form">
                 <div className="modal-form-grid">
-                  <div className="form-group full-width">
-                    <label>Date & Time *</label>
+                  <div className="form-group">
+                    <label>Appointment Date *</label>
                     <input
-                      type="text"
-                      name="dateTime"
-                      value={editFormData.dateTime}
+                      type="date"
+                      name="date"
+                      value={editFormData.date}
                       onChange={handleEditFormChange}
                       required
-                      placeholder="Jan 27 2026 5:35 PM"
                     />
-                    <small className="form-hint">Format: MMM DD YYYY H:MM AM/PM (e.g., Jan 27 2026 5:35 PM)</small>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Appointment Time *</label>
+                    <input
+                      type="time"
+                      name="time"
+                      value={editFormData.time}
+                      onChange={handleEditFormChange}
+                      required
+                    />
                   </div>
 
                   <div className="form-group">
@@ -1218,6 +1273,51 @@ function OldBookings() {
                     />
                   </div>
 
+                  <div className="form-group full-width">
+                    <label>Remarks</label>
+                    <textarea
+                      name="remarks"
+                      value={editFormData.remarks}
+                      onChange={handleEditFormChange}
+                      rows="2"
+                      placeholder="Agent remarks about this booking..."
+                    />
+                  </div>
+
+                  <div className="form-group full-width">
+                    <label>Purchase Details <span style={{fontSize:'12px',fontWeight:'normal',color:'var(--text-secondary)'}}>— filled after visit</span></label>
+                    <textarea
+                      name="purchaseDetails"
+                      value={editFormData.purchaseDetails}
+                      onChange={handleEditFormChange}
+                      rows="2"
+                      placeholder="Details of what was purchased during the visit..."
+                    />
+                  </div>
+
+                  {/* Identifier Checkboxes */}
+                  <div className="form-group full-width">
+                    <label>Identifiers</label>
+                    <div style={{display:'flex',gap:'20px',flexWrap:'wrap',marginTop:'6px'}}>
+                      <label style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'14px'}}>
+                        <input type="checkbox" name="isOts" checked={!!editFormData.isOts} onChange={handleEditFormChange} />
+                        OTS (On-the-spot)
+                      </label>
+                      <label style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'14px'}}>
+                        <input type="checkbox" name="isAdId" checked={!!editFormData.isAdId} onChange={handleEditFormChange} />
+                        Ad ID
+                      </label>
+                      <label style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'14px'}}>
+                        <input type="checkbox" name="isCompanion" checked={!!editFormData.isCompanion} onChange={handleEditFormChange} />
+                        Companion
+                      </label>
+                      <label style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'14px'}}>
+                        <input type="checkbox" name="isHighPriority" checked={!!editFormData.isHighPriority} onChange={handleEditFormChange} />
+                        High Priority
+                      </label>
+                    </div>
+                  </div>
+
                   <div className="form-group">
                     <label>Companion First Name</label>
                     <input
@@ -1324,7 +1424,7 @@ function OldBookings() {
                   {confirmDeleteBooking.firstName} {confirmDeleteBooking.lastName} — {confirmDeleteBooking.date}
                 </p>
                 <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  This will remove the record from Master Bookings and the Intake sheet. This action cannot be undone.
+                  This action marks the booking as deleted and cannot be undone.
                 </p>
                 {deleteError && (
                   <div style={{ marginTop: '14px', padding: '10px 14px', background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: '8px', color: '#dc2626', fontSize: '13px' }}>

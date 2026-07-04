@@ -39,6 +39,7 @@ function CreateBooking() {
     bookingDetails: '',
     agent: '',
     adInteracted: '',
+    remarks: '',
   });
 
   // Get current user from localStorage and auto-fill agent field if user is an agent
@@ -497,6 +498,16 @@ function CreateBooking() {
                     onChange={handleChange}
                     rows="4"
                     placeholder="Any additional notes, special requests, or important information..."
+                  />
+                </div>
+                <div className="form-group full-width">
+                  <label>Remarks</label>
+                  <textarea
+                    name="remarks"
+                    value={formData.remarks}
+                    onChange={handleChange}
+                    rows="3"
+                    placeholder="Agent remarks about this booking (e.g., customer concerns, follow-up notes)..."
                   />
                 </div>
               </div>
