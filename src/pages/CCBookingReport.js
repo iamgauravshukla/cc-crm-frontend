@@ -169,7 +169,8 @@ export default function CCBookingReport() {
 
   const {
     totalSchedulesToday, totalArrivalsToday, totalSchedulesTomorrow,
-    paymentModesTomorrow, totalSchedulesNext7, totalOTS
+    paymentModesTomorrow, paymentModeRevenueTomorrow, totalSchedulesNext7, totalOTS,
+    performance
   } = data;
 
   // Chart data
@@ -180,9 +181,13 @@ export default function CCBookingReport() {
   const otsChart       = barSeries(totalOTS.byBranch,               'OTS');
 
   const payModes = ['Cash', 'Debit', 'Credit'];
+  const payModeLabels = ['Cash', 'Debit', 'Credit'];
   const payChart = {
-    series: [{ name: 'Bookings', data: payModes.map(m => paymentModesTomorrow[m] || 0) }],
-    categories: ['Cash Payment', 'Debit Card', 'Credit Card'],
+    series: [
+      { name: 'Bookings', data: payModes.map(m => paymentModesTomorrow[m] || 0) },
+      { name: 'Revenue (÷1000)', data: payModes.map(m => Math.round((paymentModeRevenueTomorrow?.[m] || 0) / 1000)) }
+    ],
+    categories: payModeLabels,
     colors: ['#10b981', '#3b82f6', '#8b5cf6'],
   };
 
@@ -302,6 +307,43 @@ export default function CCBookingReport() {
           </div>
         )}
 
+        {/* ── Performance Strip ────────────────────────────────────── */}
+        {performance && (
+          <div className="ccr-perf-strip">
+            <div className="ccr-perf-item">
+              <div className="ccr-perf-label">Arrival Rate</div>
+              <div className="ccr-perf-value" style={{ color: performance.arrivalRateToday >= 60 ? '#10b981' : performance.arrivalRateToday >= 40 ? '#f59e0b' : '#ef4444' }}>
+                {performance.arrivalRateToday}%
+              </div>
+              <div className="ccr-perf-sub">{formatNum(totalArrivalsToday.total)} arrived / {formatNum(totalSchedulesToday.total)} sched</div>
+            </div>
+            <div className="ccr-perf-item">
+              <div className="ccr-perf-label">Conversion Rate</div>
+              <div className="ccr-perf-value" style={{ color: performance.conversionRateToday >= 60 ? '#10b981' : performance.conversionRateToday >= 40 ? '#f59e0b' : '#ef4444' }}>
+                {performance.conversionRateToday}%
+              </div>
+              <div className="ccr-perf-sub">arrived → bought</div>
+            </div>
+            <div className="ccr-perf-item">
+              <div className="ccr-perf-label">Bought Today</div>
+              <div className="ccr-perf-value" style={{ color: '#3b82f6' }}>{formatNum(performance.boughtToday.count)}</div>
+              <div className="ccr-perf-sub">₱{Number(performance.boughtToday.revenue).toLocaleString()}</div>
+            </div>
+            <div className="ccr-perf-item">
+              <div className="ccr-perf-label">Promo Hunters</div>
+              <div className="ccr-perf-value" style={{ color: performance.promoHuntersToday > 0 ? '#f59e0b' : 'var(--text-secondary)' }}>
+                {formatNum(performance.promoHuntersToday)}
+              </div>
+              <div className="ccr-perf-sub">today</div>
+            </div>
+            <div className="ccr-perf-item">
+              <div className="ccr-perf-label">Tomorrow Pipeline</div>
+              <div className="ccr-perf-value" style={{ color: '#8b5cf6' }}>{formatNum(totalSchedulesTomorrow.total)}</div>
+              <div className="ccr-perf-sub">₱{Number(totalSchedulesTomorrow.potentialRevenue || 0).toLocaleString()} potential</div>
+            </div>
+          </div>
+        )}
+
         {/* ── Row 1: Total Schedules Today ─────────────────────────── */}
         <div className="ccr-section">
           <div className="ccr-row">
@@ -374,7 +416,34 @@ export default function CCBookingReport() {
             <Snap id="chart-payment" className="ccr-chart-wrap ccr-full">
               <ReactApexChart
                 type="bar" height={300}
-                options={barOptions(payChart.categories, payChart.colors, 'Modes of Payment For Tomorrow', 'payment', 'payment-tomorrow', 'payMode')}
+                options={{
+                  ...baseChart('Modes of Payment For Tomorrow (count · ₱ revenue ÷ 1k)'),
+                  chart: { ...baseChart('').chart, type: 'bar', stacked: false,
+                    events: { dataPointSelection: (_ev, _ctx, config) => {
+                      if (config.seriesIndex === 0) {
+                        const val = payModeLabels[config.dataPointIndex];
+                        if (val) handleBarClick('payment', val, 'payment-tomorrow', 'payMode');
+                      }
+                    }}
+                  },
+                  plotOptions: { bar: { borderRadius: 5, columnWidth: '50%', dataLabels: { position: 'top' } } },
+                  colors: ['#10b981', '#93c5fd'],
+                  legend: { show: true, labels: { colors: isDark ? '#94a3b8' : '#64748b' } },
+                  xaxis: { ...baseChart('').xaxis, categories: payModeLabels },
+                  dataLabels: { enabled: true, style: { fontSize: '11px', fontWeight: 600, colors: [isDark ? '#e2e8f0' : '#1e293b'] }, offsetY: -18 },
+                  yaxis: [
+                    { title: { text: 'Bookings', style: { color: isDark ? '#cbd5e1' : '#64748b' } }, labels: { style: { colors: isDark ? '#94a3b8' : '#64748b' } } },
+                    { opposite: true, title: { text: '₱ Revenue (÷1k)', style: { color: isDark ? '#cbd5e1' : '#64748b' } },
+                      labels: { formatter: v => `₱${(v ?? 0)}k`, style: { colors: isDark ? '#94a3b8' : '#64748b' } },
+                      min: 0 }
+                  ],
+                  tooltip: { shared: true, intersect: false,
+                    y: {
+                      formatter: (v, { seriesIndex }) =>
+                        seriesIndex === 0 ? `${v ?? 0} bookings` : `₱${((v ?? 0) * 1000).toLocaleString()}`
+                    }
+                  }
+                }}
                 series={payChart.series}
               />
             </Snap>

@@ -6,7 +6,7 @@ import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import QuickFilterBar from '../components/QuickFilterBar';
 import { useTheme } from '../context/ThemeContext';
-import { FiTrendingUp, FiDollarSign, FiBarChart2, FiUsers, FiRepeat, FiHome, FiPackage, FiCreditCard, FiUserCheck, FiPieChart, FiCalendar, FiTarget, FiAward, FiActivity } from 'react-icons/fi';
+import { FiTrendingUp, FiDollarSign, FiBarChart2, FiUsers, FiRepeat, FiHome, FiPackage, FiCreditCard, FiUserCheck, FiPieChart, FiCalendar, FiTarget, FiAward, FiActivity, FiFilter } from 'react-icons/fi';
 import './Analytics.css';
 
 const BRANCHES = [
@@ -172,8 +172,17 @@ function Analytics() {
     return null;
   }
 
-  const { overview, branchPerformance, treatmentAnalysis, revenueAnalysis, 
-          agentPerformance, demographicAnalysis, timeSeriesData, marketingChannels } = analytics;
+  const { overview, branchPerformance, treatmentAnalysis, revenueAnalysis,
+          agentPerformance, demographicAnalysis, timeSeriesData, marketingChannels,
+          previousOverview, funnelData, dayOfWeekData, insights } = analytics;
+
+  // Period-over-period deltas (null = no comparison available)
+  const delta = (curr, prev) => prev > 0 ? +((curr - prev) / prev * 100).toFixed(1) : null;
+  const bookingsDelta = delta(overview.totalBookings,     previousOverview?.totalBookings     || 0);
+  const revenueDelta  = delta(overview.totalRevenue,      previousOverview?.totalRevenue      || 0);
+  const abvDelta      = delta(overview.avgBookingValue,
+    previousOverview?.completedBookings > 0
+      ? previousOverview.totalRevenue / previousOverview.completedBookings : 0);
 
   // Derive display values from active filters
   const dateFilter      = activeFilters.find(f => f.field === 'dateRange');
@@ -215,54 +224,118 @@ function Analytics() {
       </header>
 
       <div className="analytics-content">
+
+        {/* Auto Insights Banner */}
+        {insights?.length > 0 && (
+          <section className="insights-banner">
+            <h2 className="insights-title">💡 Key Insights</h2>
+            <div className="insights-list">
+              {insights.map((ins, i) => (
+                <div key={i} className={`insight-card insight-${ins.type}`}>{ins.text}</div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Overview Cards */}
         <section className="overview-section">
           <div className="stat-card">
-            <div className="stat-icon blue">
-              <FiTrendingUp size={24} />
-            </div>
+            <div className="stat-icon blue"><FiTrendingUp size={24} /></div>
             <div className="stat-content">
               <p className="stat-label">Total Bookings</p>
               <h3>{overview.totalBookings.toLocaleString()}</h3>
+              {bookingsDelta !== null && <span className={`kpi-delta ${bookingsDelta >= 0 ? 'delta-up' : 'delta-down'}`}>{bookingsDelta >= 0 ? '▲' : '▼'} {Math.abs(bookingsDelta)}% vs prev</span>}
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon green">
-              <FiDollarSign size={24} />
-            </div>
+            <div className="stat-icon green"><FiDollarSign size={24} /></div>
             <div className="stat-content">
               <p className="stat-label">Total Revenue</p>
               <h3>₱{Number(overview.totalRevenue).toLocaleString()}</h3>
+              {revenueDelta !== null && <span className={`kpi-delta ${revenueDelta >= 0 ? 'delta-up' : 'delta-down'}`}>{revenueDelta >= 0 ? '▲' : '▼'} {Math.abs(revenueDelta)}% vs prev</span>}
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon purple">
-              <FiBarChart2 size={24} />
-            </div>
+            <div className="stat-icon purple"><FiBarChart2 size={24} /></div>
             <div className="stat-content">
               <p className="stat-label">Avg Booking Value</p>
               <h3>₱{Number(overview.avgBookingValue).toLocaleString()}</h3>
+              {abvDelta !== null && <span className={`kpi-delta ${abvDelta >= 0 ? 'delta-up' : 'delta-down'}`}>{abvDelta >= 0 ? '▲' : '▼'} {Math.abs(abvDelta)}% vs prev</span>}
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon orange">
-              <FiUsers size={24} />
-            </div>
+            <div className="stat-icon orange"><FiUsers size={24} /></div>
             <div className="stat-content">
               <p className="stat-label">Unique Customers</p>
               <h3>{overview.uniqueCustomers.toLocaleString()}</h3>
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon teal">
-              <FiRepeat size={24} />
-            </div>
+            <div className="stat-icon teal"><FiRepeat size={24} /></div>
             <div className="stat-content">
               <p className="stat-label">Repeat Customer Rate</p>
               <h3>{overview.repeatCustomerRate}%</h3>
             </div>
           </div>
         </section>
+
+        {/* Conversion Funnel */}
+        {funnelData?.totalBookings > 0 && (
+          <section className="chart-section">
+            <h2><FiFilter style={{marginRight:'8px',verticalAlign:'middle'}} /> Conversion Funnel</h2>
+            <div className="funnel-layout">
+              <div className="chart-container funnel-chart-wrap">
+                <Chart
+                  options={{
+                    ...getChartTheme(),
+                    chart: { ...getChartTheme().chart, type: 'bar', toolbar: { show: false } },
+                    plotOptions: { bar: { horizontal: true, borderRadius: 6, barHeight: '70%', dataLabels: { position: 'center' } } },
+                    colors: ['#1e40af', '#7c3aed', '#10b981'],
+                    dataLabels: {
+                      enabled: true,
+                      formatter: (val) => `${(val ?? 0).toLocaleString()} (${funnelData.totalBookings > 0 ? ((val ?? 0) / funnelData.totalBookings * 100).toFixed(1) : 0}%)`,
+                      style: { fontSize: '12px', fontWeight: 700, colors: ['#fff'] }
+                    },
+                    xaxis: { categories: ['Total Bookings', 'Arrived at Clinic', 'Purchased'], labels: { show: false } },
+                    yaxis: { labels: { style: { colors: isDarkMode ? '#cbd5e1' : '#64748b', fontSize: '13px', fontWeight: 600 } } },
+                    legend: { show: false },
+                    grid: { show: false },
+                    tooltip: { y: { formatter: (val) => `${val.toLocaleString()} bookings` } }
+                  }}
+                  series={[{ name: 'Bookings', data: [funnelData.totalBookings, funnelData.arrived, funnelData.bought] }]}
+                  type="bar"
+                  height={220}
+                />
+              </div>
+              <div className="funnel-stats">
+                <div className="funnel-stat-row">
+                  <span className="fsr-label">Total in period</span>
+                  <span className="fsr-val blue">{funnelData.totalBookings.toLocaleString()}</span>
+                </div>
+                <div className="funnel-stat-row">
+                  <span className="fsr-label">Scheduled (pending)</span>
+                  <span className="fsr-val">{funnelData.scheduled.toLocaleString()}</span>
+                </div>
+                <div className="funnel-stat-row">
+                  <span className="fsr-label">Arrived at clinic</span>
+                  <span className="fsr-val purple">{funnelData.arrived.toLocaleString()} <small>({funnelData.totalBookings > 0 ? (funnelData.arrived / funnelData.totalBookings * 100).toFixed(1) : 0}%)</small></span>
+                </div>
+                <div className="funnel-stat-row">
+                  <span className="fsr-label">Converted (bought)</span>
+                  <span className="fsr-val green">{funnelData.bought.toLocaleString()} <small>({funnelData.arrived > 0 ? (funnelData.bought / funnelData.arrived * 100).toFixed(1) : 0}% of arrived)</small></span>
+                </div>
+                <div className="funnel-stat-row">
+                  <span className="fsr-label">Cancelled</span>
+                  <span className="fsr-val red">{funnelData.cancelled.toLocaleString()}</span>
+                </div>
+                <div className="funnel-stat-row">
+                  <span className="fsr-label">Promo Hunters</span>
+                  <span className="fsr-val orange">{funnelData.promoHunters.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Branch Performance (only show when All is selected) */}
         {selectedBranch === 'All' && branchPerformance.length > 0 && (
@@ -562,6 +635,48 @@ function Analytics() {
             </div>
           </div>
         </section>
+
+        {/* Day of Week Analysis */}
+        {dayOfWeekData?.some(d => d.total > 0) && (
+          <section className="chart-section">
+            <h2><FiCalendar style={{marginRight:'8px',verticalAlign:'middle'}} /> Bookings by Day of Week</h2>
+            <div className="chart-container">
+              <Chart
+                options={{
+                  ...getChartTheme(),
+                  chart: { ...getChartTheme().chart, type: 'bar', toolbar: { show: false } },
+                  plotOptions: { bar: { borderRadius: 8, columnWidth: '55%' } },
+                  colors: ['#1e40af', '#10b981'],
+                  xaxis: { categories: dayOfWeekData.map(d => d.day), labels: { style: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } } },
+                  yaxis: { title: { text: 'Bookings', style: { color: isDarkMode ? '#cbd5e1' : '#64748b' } }, labels: { style: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } } },
+                  dataLabels: { enabled: false },
+                  legend: { position: 'top', labels: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } },
+                  grid: { strokeDashArray: 4, borderColor: isDarkMode ? '#334155' : '#e5e7eb' },
+                  tooltip: {
+                    shared: true, intersect: false,
+                    y: {
+                      formatter: (val, { dataPointIndex, seriesIndex }) => {
+                        const d = dayOfWeekData?.[dataPointIndex];
+                        if (!d) return `${val ?? 0}`;
+                        if (seriesIndex === 0) {
+                          const arrRate = d.total > 0 ? (d.arrived / d.total * 100).toFixed(1) : '0';
+                          return `${(val ?? 0).toLocaleString()} (${arrRate}% arrival rate)`;
+                        }
+                        return `${(val ?? 0).toLocaleString()}`;
+                      }
+                    }
+                  }
+                }}
+                series={[
+                  { name: 'Total Bookings', data: dayOfWeekData.map(d => d.total) },
+                  { name: 'Arrivals',       data: dayOfWeekData.map(d => d.arrived) }
+                ]}
+                type="bar"
+                height={320}
+              />
+            </div>
+          </section>
+        )}
 
         {/* Booking Trends */}
         {timeSeriesData.byMonth.length > 0 && (

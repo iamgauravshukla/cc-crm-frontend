@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera, FiTrash2, FiAlertTriangle } from 'react-icons/fi';
+import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera, FiTrash2, FiAlertTriangle, FiDownload, FiBookmark } from 'react-icons/fi';
 import html2canvas from 'html2canvas';
-import { getOldBookings, deleteBooking } from '../services/api';
+import { getOldBookings, deleteBooking, exportBookings, bulkUpdateStatus, getSavedViews, createSavedView, deleteSavedView } from '../services/api';
+import { useConfig } from '../hooks/useConfig';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import ScrollableTable from '../components/ScrollableTable';
@@ -74,45 +75,29 @@ function OldBookings() {
   const [validationUpdating, setValidationUpdating] = useState({});
 
   // Delete state
-  const [confirmDeleteBooking, setConfirmDeleteBooking] = useState(null); // booking object to confirm
+  const [confirmDeleteBooking, setConfirmDeleteBooking] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
+  // Multi-select + bulk update
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkStatus, setBulkStatus] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  // Export
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // Saved views
+  const [savedViews, setSavedViews] = useState([]);
+  const [showSavedViews, setShowSavedViews] = useState(false);
+  const [newViewName, setNewViewName] = useState('');
+  const [savingView, setSavingView] = useState(false);
+
   const limit = 50;
+  const { options: cfgOptions } = useConfig();
 
-  const branches = [
-    'All',
-    'AI SKIN',
-    'CENTRIS',
-    'DNA MANILA',
-    'GENEVA',
-    'GLORIETTA',
-    'HERA',
-    'LIONESSE',
-    'LUMIA',
-    'PARIS',
-    'SM NORTH',
-    'VENICE',
-    'STA LUCIA',
-    'FELIZ',
-    'ESTANCIA'
-  ];
-
-  const bookingStatuses = [
-    'All',
-    'Arrived & bought',
-    'Arrived not potential',
-    'Cancelled',
-    'Promo hunter',
-    'Scheduled',
-    'Refund',
-    'Comeback',
-    'Comeback & bought',
-    'No Data',
-    'Arrived on treatment',
-    'Old client',
-    'On the way'
-  ];
+  const branches        = ['All', ...cfgOptions.branches];
+  const bookingStatuses = ['All', ...cfgOptions.statuses];
 
   const fetchBookings = async () => {
     // Don't fetch if a custom date filter is active but dates aren't fully filled
@@ -157,6 +142,7 @@ function OldBookings() {
 
   useEffect(() => {
     fetchBookings();
+    setSelectedIds(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, debouncedSearchTerm, activeFilters, sortOrder]);
 
@@ -205,20 +191,8 @@ function OldBookings() {
     return 'status-badge';
   };
 
-  const treatments = [
-    'HAIR RENEWAL', 'HAIR REGROWTH', 'HAIR REMOVAL', 'SCALP DANDRUFF',
-    'SCALP PSORIASIS', 'EXOSOMES', 'ADVANCED HAIRLOSS SOLUTION', 'EXCIMER RX LASER',
-    'EYEBAG', '7D HIFU', '12D HIFU', 'HYDRA', 'CRYO', 'CO2', 'CARBON', 'PICO',
-    'ANTI MELASMA', 'ACNE CLEANSE', 'ACNE BRIGHTENING', 'ORGANIC BOTOX',
-    'COLLAGEN FACIAL', 'THERMAGE', 'EMS', '10D LASER', 'SKIN LIGHTENING',
-    'EXILIS', 'SAUNAPOD', 'SOFWAVE', 'RF', 'WARTS REMOVAL'
-  ];
-
-  const agents = [
-    'NICOLE', 'SYRA', 'DHEZA', 'GERALDINE', 'ANJELA', 'RAIZA', 'NALYN',
-    'DONA', 'TRISHA', 'IRIS', 'JOY', 'MAE', 'JULS', 'YAN', 'SUTRA',
-    'GLADEZ', 'LEIH', 'MARY', 'ROSE', 'CAMIL', 'SHAINA'
-  ];
+  const treatments = cfgOptions.treatments;
+  const agents     = cfgOptions.agents;
 
   // ── Quick filter system ────────────────────────────────────────────────────
   const FILTER_FIELDS = [
@@ -331,8 +305,98 @@ function OldBookings() {
     resetBuilder();
   };
 
-  const removeFilter = (id) => { setActiveFilters(prev => prev.filter(f => f.id !== id)); setPage(1); };
-  const clearAllFilters = () => { setActiveFilters([]); setPage(1); };
+  const removeFilter = (id) => { setActiveFilters(prev => prev.filter(f => f.id !== id)); setPage(1); setSelectedIds(new Set()); };
+  const clearAllFilters = () => { setActiveFilters([]); setPage(1); setSelectedIds(new Set()); };
+
+  // ── Export ────────────────────────────────────────────────────────────────
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      const params = { search: debouncedSearchTerm, ...deriveApiParams(activeFilters) };
+      const response = await exportBookings(params);
+      const url  = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href  = url;
+      link.setAttribute('download', `bookings-${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // ── Multi-select ──────────────────────────────────────────────────────────
+  const handleSelectAll = () => {
+    if (selectedIds.size === bookings.length && bookings.length > 0) setSelectedIds(new Set());
+    else setSelectedIds(new Set(bookings.map(b => b.recordId)));
+  };
+
+  const handleSelectOne = (recordId) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(recordId)) next.delete(recordId); else next.add(recordId);
+      return next;
+    });
+  };
+
+  const handleBulkUpdate = async () => {
+    if (!bulkStatus || selectedIds.size === 0) return;
+    setBulkLoading(true);
+    try {
+      await bulkUpdateStatus({ recordIds: [...selectedIds], status: bulkStatus });
+      setSelectedIds(new Set());
+      setBulkStatus('');
+      fetchBookings();
+    } catch (err) {
+      console.error('Bulk update failed:', err.response?.data?.error || err.message);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  // ── Saved views ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    getSavedViews().then(res => setSavedViews(res.data.views || [])).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSaveView = async () => {
+    const name = newViewName.trim();
+    if (!name || activeFilters.length === 0) return;
+    setSavingView(true);
+    try {
+      const res = await createSavedView({ name, filters: activeFilters });
+      setSavedViews(prev => {
+        const idx = prev.findIndex(v => v.name === name);
+        return idx >= 0 ? prev.map((v, i) => i === idx ? res.data.view : v) : [res.data.view, ...prev];
+      });
+      setNewViewName('');
+    } catch (err) {
+      console.error('Save view failed:', err);
+    } finally {
+      setSavingView(false);
+    }
+  };
+
+  const handleLoadView = (view) => {
+    setActiveFilters(view.filters);
+    setPage(1);
+    setSelectedIds(new Set());
+    setShowSavedViews(false);
+  };
+
+  const handleDeleteView = async (id) => {
+    try {
+      await deleteSavedView(id);
+      setSavedViews(prev => prev.filter(v => v.id !== id));
+    } catch (err) {
+      console.error('Delete view failed:', err);
+    }
+  };
   const openEditFilter = (filter) => {
     setEditingFilterId(filter.id);
     setBuilderField(filter.field);
@@ -421,6 +485,7 @@ function OldBookings() {
       isAdId: booking.isAdId || false,
       isCompanion: booking.isCompanion || false,
       isHighPriority: booking.isHighPriority || false,
+      followUpDate: booking.followUpDate || '',
     });
     setUpdateError('');
     setUpdateSuccess('');
@@ -566,6 +631,56 @@ function OldBookings() {
                   aria-label="Search bookings"
                 />
               </div>
+              {/* Saved Views */}
+              <div className="saved-views-wrap">
+                <button
+                  className={`qf-toolbar-btn${showSavedViews ? ' active' : ''}`}
+                  onClick={() => setShowSavedViews(s => !s)}
+                  title="Saved views"
+                >
+                  <FiBookmark size={14} />
+                  <span>Views</span>
+                  {savedViews.length > 0 && <span className="qf-count-badge">{savedViews.length}</span>}
+                </button>
+                {showSavedViews && (
+                  <div className="saved-views-dropdown">
+                    <div className="saved-views-header">Saved Views</div>
+                    {savedViews.length === 0 && <div className="saved-views-empty">No saved views yet</div>}
+                    {savedViews.map(v => (
+                      <div key={v.id} className="saved-view-item">
+                        <button className="saved-view-load" onClick={() => handleLoadView(v)}>{v.name}</button>
+                        <button className="saved-view-del" onClick={() => handleDeleteView(v.id)} title="Delete view"><FiX size={12} /></button>
+                      </div>
+                    ))}
+                    <div className="saved-views-save">
+                      <input
+                        type="text"
+                        value={newViewName}
+                        onChange={e => setNewViewName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleSaveView()}
+                        placeholder="Save current filters as..."
+                        disabled={activeFilters.length === 0}
+                      />
+                      <button
+                        onClick={handleSaveView}
+                        disabled={!newViewName.trim() || activeFilters.length === 0 || savingView}
+                      >
+                        {savingView ? '…' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {/* Export */}
+              <button
+                className="qf-toolbar-btn"
+                onClick={handleExport}
+                disabled={exportLoading}
+                title="Export current view to CSV"
+              >
+                <FiDownload size={14} />
+                <span>{exportLoading ? 'Exporting…' : 'Export CSV'}</span>
+              </button>
               <div className="view-toggle">
                 <button className={`view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')} title="Table View"><FiList size={16} /></button>
                 <button className={`view-btn ${viewMode === 'card' ? 'active' : ''}`} onClick={() => setViewMode('card')} title="Card View"><FiGrid size={16} /></button>
@@ -715,6 +830,34 @@ function OldBookings() {
 
         {error && <div className="modern-error-message">{error}</div>}
 
+        {/* Bulk action bar */}
+        {selectedIds.size > 0 && (
+          <div className="bulk-action-bar">
+            <span className="bulk-selected-count">{selectedIds.size} selected</span>
+            <select
+              className="bulk-status-select"
+              value={bulkStatus}
+              onChange={e => setBulkStatus(e.target.value)}
+            >
+              <option value="">Set status…</option>
+              {cfgOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleBulkUpdate}
+              disabled={!bulkStatus || bulkLoading}
+            >
+              {bulkLoading ? 'Updating…' : 'Apply'}
+            </button>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <Loader message="Loading bookings..." />
         ) : bookings.length === 0 ? (
@@ -728,6 +871,14 @@ function OldBookings() {
                 <table className="bookings-table">
                   <thead>
                     <tr>
+                      <th className="checkbox-col">
+                        <input
+                          type="checkbox"
+                          checked={bookings.length > 0 && selectedIds.size === bookings.length}
+                          onChange={handleSelectAll}
+                          title="Select all"
+                        />
+                      </th>
                       <th>Actions</th>
                       <th>Booking Schedule</th>
                       <th>Branch</th>
@@ -762,9 +913,19 @@ function OldBookings() {
                   </thead>
                   <tbody>
                     {bookings.map((booking, index) => (
-                      <tr key={index} className={(booking.status || '').toLowerCase() === 'promo hunter' ? 'promo-hunter-row' : ''}>
+                      <tr key={index} className={[
+                        (booking.status || '').toLowerCase() === 'promo hunter' ? 'promo-hunter-row' : '',
+                        selectedIds.has(booking.recordId) ? 'row-selected' : ''
+                      ].filter(Boolean).join(' ')}>
+                        <td className="checkbox-col">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(booking.recordId)}
+                            onChange={() => handleSelectOne(booking.recordId)}
+                          />
+                        </td>
                         <td>
-                          <button 
+                          <button
                             className="edit-btn-icon"
                             onClick={() => handleEditClick(booking)}
                             title="Edit booking"
@@ -1316,6 +1477,16 @@ function OldBookings() {
                         High Priority
                       </label>
                     </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Follow-up Date</label>
+                    <input
+                      type="date"
+                      name="followUpDate"
+                      value={editFormData.followUpDate || ''}
+                      onChange={handleEditFormChange}
+                    />
                   </div>
 
                   <div className="form-group">

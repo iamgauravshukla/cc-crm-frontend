@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBooking } from '../services/api';
+import { useConfig } from '../hooks/useConfig';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import { FiUser, FiCalendar, FiDollarSign, FiUsers, FiFileText, FiCheck } from 'react-icons/fi';
@@ -11,6 +12,7 @@ function CreateBooking() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [user, setUser] = useState(null);
+  const { options: cfgOptions, loading: cfgLoading } = useConfig();
 
   const [formData, setFormData] = useState({
     branch: '',
@@ -40,6 +42,7 @@ function CreateBooking() {
     agent: '',
     adInteracted: '',
     remarks: '',
+    followUpDate: '',
   });
 
   // Get current user from localStorage and auto-fill agent field if user is an agent
@@ -56,29 +59,10 @@ function CreateBooking() {
     }
   }, []);
 
-  const branches = ['HERA', 'AI SKIN', 'LUMIA', 'GENEVA', 'VENICE', 'DNA MANILA', 'PARIS', 'STA LUCIA', 'FELIZ', 'ESTANCIA'];
-  
-  const bookingStatuses = [
-    'Pencil booking', 'Scheduled', 'At the shop', 'Nearby', 'On the way',
-    'Will be late', 'Cancelled', 'Arrived on treatment', 'Arrived & bought',
-    'Arrived not potential', 'Comeback', 'Comeback & bought', 'Refund',
-    'Old client', 'Promo hunter'
-  ];
-
-  const treatments = [
-    'HAIR RENEWAL', 'HAIR REGROWTH', 'HAIR REMOVAL', 'SCALP DANDRUFF',
-    'SCALP PSORIASIS', 'EXOSOMES', 'ADVANCED HAIRLOSS SOLUTION', 'EXCIMER RX LASER',
-    'EYEBAG', '7D HIFU', '12D HIFU', 'HYDRA', 'CRYO', 'CO2', 'CARBON', 'PICO',
-    'ANTI MELASMA', 'ACNE CLEANSE', 'ACNE BRIGHTENING', 'ORGANIC BOTOX',
-    'COLLAGEN FACIAL', 'THERMAGE', 'EMS', '10D LASER', 'SKIN LIGHTENING',
-    'EXILIS', 'SAUNAPOD', 'SOFWAVE', 'RF', 'WARTS REMOVAL'
-  ];
-
-  const agents = [
-    'NICOLE', 'SYRA', 'DHEZA', 'GERALDINE', 'ANJELA', 'RAIZA', 'NALYN',
-    'DONA', 'TRISHA', 'IRIS', 'JOY', 'MAE', 'JULS', 'YAN', 'SUTRA',
-    'GLADEZ', 'LEIH', 'MARY', 'ROSE', 'CAMIL', 'SHAINA'
-  ];
+  const branches        = cfgOptions.branches;
+  const bookingStatuses = cfgOptions.statuses;
+  const treatments      = cfgOptions.treatments;
+  const agents          = cfgOptions.agents;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -131,7 +115,9 @@ function CreateBooking() {
             </div>
           )}
 
-          {loading ? (
+          {cfgLoading ? (
+            <Loader message="Loading form options..." />
+          ) : loading ? (
             <Loader message="Creating booking..." />
           ) : (
             <form onSubmit={handleSubmit} className="booking-form">
@@ -509,6 +495,16 @@ function CreateBooking() {
                     rows="3"
                     placeholder="Agent remarks about this booking (e.g., customer concerns, follow-up notes)..."
                   />
+                </div>
+                <div className="form-group">
+                  <label>Follow-up Date</label>
+                  <input
+                    type="date"
+                    name="followUpDate"
+                    value={formData.followUpDate}
+                    onChange={handleChange}
+                  />
+                  <small className="form-hint">Set a date to follow up with this customer.</small>
                 </div>
               </div>
 

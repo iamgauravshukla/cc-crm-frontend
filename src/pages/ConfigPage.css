@@ -1,0 +1,220 @@
+/* ── Tab bar ───────────────────────────────────────────────── */
+.cfg-tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0;
+}
+
+.cfg-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: 6px 6px 0 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cfg-tab:hover { color: var(--text-primary); background: var(--hover-bg); }
+.cfg-tab.active { color: var(--accent-color, #6366f1); border-bottom-color: var(--accent-color, #6366f1); font-weight: 600; }
+
+.cfg-tab-badge {
+  background: var(--border-color);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 20px;
+  min-width: 22px;
+  text-align: center;
+}
+.cfg-tab.active .cfg-tab-badge {
+  background: var(--accent-color, #6366f1);
+  color: #fff;
+}
+
+/* ── Panel ─────────────────────────────────────────────────── */
+.cfg-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.cfg-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary, rgba(0,0,0,0.02));
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cfg-panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cfg-panel-count {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  background: var(--border-color);
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+
+.cfg-panel-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── List ──────────────────────────────────────────────────── */
+.cfg-list {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.cfg-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.cfg-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.12s;
+}
+.cfg-item:last-child { border-bottom: none; }
+.cfg-item:hover      { background: var(--hover-bg); }
+.cfg-item.editing    { background: var(--hover-bg); }
+.cfg-item.confirming { background: rgba(220, 38, 38, 0.05); }
+
+.cfg-item-num {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 24px;
+  text-align: right;
+}
+
+.cfg-item-value {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.cfg-delete-confirm-text {
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.cfg-item-input {
+  flex: 1;
+  padding: 5px 10px;
+  border: 1.5px solid var(--accent-color, #6366f1);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--input-bg, var(--card-bg));
+  color: var(--text-primary);
+  outline: none;
+}
+
+.cfg-item-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.cfg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+}
+.cfg-btn:disabled { opacity: 0.4; cursor: default; }
+
+.cfg-btn.cfg-move   { padding: 4px 6px; }
+.cfg-btn.cfg-move:hover:not(:disabled)   { background: var(--hover-bg); color: var(--text-primary); }
+
+.cfg-btn.cfg-edit   { color: var(--text-secondary); }
+.cfg-btn.cfg-edit:hover   { background: rgba(99,102,241,0.1); color: #6366f1; border-color: #6366f1; }
+
+.cfg-btn.cfg-save   { color: #16a34a; border-color: #16a34a; }
+.cfg-btn.cfg-save:hover:not(:disabled)   { background: rgba(22,163,74,0.1); }
+
+.cfg-btn.cfg-cancel { color: var(--text-secondary); }
+.cfg-btn.cfg-cancel:hover { background: var(--hover-bg); }
+
+.cfg-btn.cfg-delete { color: #dc2626; border-color: transparent; }
+.cfg-btn.cfg-delete:hover:not(:disabled) { background: rgba(220,38,38,0.1); border-color: #dc2626; }
+
+/* ── Add row ────────────────────────────────────────────────── */
+.cfg-add-row {
+  display: flex;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 2px dashed var(--border-color);
+  background: var(--bg-secondary, rgba(0,0,0,0.01));
+}
+
+.cfg-add-input {
+  flex: 1;
+  padding: 9px 14px;
+  border: 1.5px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--input-bg, var(--card-bg));
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cfg-add-input:focus { border-color: var(--accent-color, #6366f1); }
+
+.cfg-btn.cfg-add-confirm {
+  padding: 9px 18px;
+  background: var(--accent-color, #6366f1);
+  color: #fff;
+  border-color: var(--accent-color, #6366f1);
+  font-weight: 600;
+  border-radius: 8px;
+}
+.cfg-btn.cfg-add-confirm:hover:not(:disabled) {
+  background: var(--accent-hover, #4f46e5);
+  border-color: var(--accent-hover, #4f46e5);
+}
+
+.cfg-add-error {
+  padding: 4px 20px 10px;
+  font-size: 12px;
+  color: #dc2626;
+  margin: 0;
+}

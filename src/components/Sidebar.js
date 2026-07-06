@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiCalendar, FiBarChart2, FiLogOut, FiMenu, FiX, FiPlusCircle, FiMoon, FiSun, FiUsers, FiTrendingUp, FiClipboard, FiDollarSign, FiGlobe } from 'react-icons/fi';
+import { FiHome, FiCalendar, FiBarChart2, FiLogOut, FiMenu, FiX, FiPlusCircle, FiMoon, FiSun, FiUsers, FiTrendingUp, FiClipboard, FiDollarSign, FiGlobe, FiSettings, FiSearch } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import './Sidebar.css';
 
@@ -51,8 +51,10 @@ function Sidebar() {
     { path: '/sales-report', label: 'Sales Report', icon: FiDollarSign, roles: ['Admin'] },
     { path: '/agent-performance', label: 'Agent Performance', icon: FiUsers, roles: ['Admin'] },
     { path: '/ad-performance', label: 'Ad Performance', icon: FiTrendingUp, roles: ['Admin'] },
+    { path: '/customer-lookup', label: 'Customer Lookup', icon: FiSearch, roles: ['Admin', 'Agent'] },
     { path: '/website-leads', label: 'Website Leads', icon: FiGlobe, roles: ['Admin', 'Agent'] },
-    { path: '/users-management', label: 'Users Management', icon: FiUsers, roles: ['Admin'] },
+    { path: '/users-management', label: 'Users Management', icon: FiUsers,    roles: ['Admin'] },
+    { path: '/config',           label: 'Configuration',    icon: FiSettings, roles: ['Admin'] },
   ];
 
   // Filter menu items based on user role

@@ -296,6 +296,62 @@ const DailyReports = () => {
 
         {error && <div className="dr-error"><FiAlertCircle size={18} /> {error}</div>}
 
+        {/* KPI Summary Strip */}
+        {reports && (() => {
+          const schedTotal = Object.values(reports.otsBookings?.byBranch || {}).reduce((s, v) => s + v.count, 0)
+                           + Object.values(reports.overallBookings?.byBranch || {}).reduce((s, v) => s + v.count, 0);
+          const arrRate = schedTotal > 0 && reports.arrivalRateToday != null
+            ? reports.arrivalRateToday : null;
+          return (
+            <div className="dr-kpi-strip">
+              <div className="dr-kpi-item">
+                <div className="dr-kpi-label">Today's Revenue</div>
+                <div className="dr-kpi-value" style={{ color: '#10b981' }}>
+                  ₱{Number(reports.boughtToday?.revenue || 0).toLocaleString()}
+                </div>
+                <div className="dr-kpi-sub">{reports.boughtToday?.count || 0} sales
+                  {(reports.boughtToday?.comebackCount || 0) > 0 && ` · ${reports.boughtToday.comebackCount} comeback`}
+                </div>
+              </div>
+              <div className="dr-kpi-item">
+                <div className="dr-kpi-label">Arrival Rate</div>
+                <div className="dr-kpi-value" style={{ color: '#3b82f6' }}>
+                  {arrRate !== null ? `${arrRate}%` : '—'}
+                </div>
+                <div className="dr-kpi-sub">{reports.arrivalsToday?.count || 0} arrived today</div>
+              </div>
+              <div className="dr-kpi-item">
+                <div className="dr-kpi-label">Conversion Rate</div>
+                <div className="dr-kpi-value" style={{ color: '#8b5cf6' }}>
+                  {reports.conversionRateToday != null ? `${reports.conversionRateToday}%` : '—'}
+                </div>
+                <div className="dr-kpi-sub">arrived → bought</div>
+              </div>
+              <div className="dr-kpi-item">
+                <div className="dr-kpi-label">Promo Hunters</div>
+                <div className="dr-kpi-value" style={{ color: reports.promoHuntersToday > 0 ? '#f59e0b' : 'var(--text-secondary)' }}>
+                  {reports.promoHuntersToday || 0}
+                </div>
+                <div className="dr-kpi-sub">today</div>
+              </div>
+              <div className="dr-kpi-item">
+                <div className="dr-kpi-label">No-Shows</div>
+                <div className="dr-kpi-value" style={{ color: reports.noShowsToday > 0 ? '#ef4444' : 'var(--text-secondary)' }}>
+                  {reports.noShowsToday || 0}
+                </div>
+                <div className="dr-kpi-sub">today</div>
+              </div>
+              <div className="dr-kpi-item">
+                <div className="dr-kpi-label">Follow-ups Due</div>
+                <div className="dr-kpi-value" style={{ color: reports.followUpsDueToday > 0 ? '#ec4899' : 'var(--text-secondary)' }}>
+                  {reports.followUpsDueToday || 0}
+                </div>
+                <div className="dr-kpi-sub">scheduled today</div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Row 1 — OTS */}
         <div className="dr-section">
           <div className="dr-row">

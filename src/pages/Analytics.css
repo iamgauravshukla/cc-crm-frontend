@@ -556,6 +556,87 @@
   color: #1e40af;
 }
 
+/* ── KPI delta badges ─────────────────────────────────────── */
+.kpi-delta {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-top: 4px;
+}
+.delta-up   { background: #d1fae5; color: #065f46; }
+.delta-down { background: #fee2e2; color: #991b1b; }
+[data-theme='dark'] .delta-up   { background: #064e3b; color: #6ee7b7; }
+[data-theme='dark'] .delta-down { background: #7f1d1d; color: #fca5a5; }
+
+/* ── Insights banner ──────────────────────────────────────── */
+.insights-banner {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+.insights-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+.insights-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.insight-card {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  flex: 1 1 280px;
+}
+.insight-positive { background: #d1fae5; color: #065f46; border-left: 3px solid #10b981; }
+.insight-negative { background: #fee2e2; color: #991b1b; border-left: 3px solid #ef4444; }
+.insight-warning  { background: #fef3c7; color: #92400e; border-left: 3px solid #f59e0b; }
+.insight-info     { background: #dbeafe; color: #1e40af; border-left: 3px solid #3b82f6; }
+[data-theme='dark'] .insight-positive { background: #064e3b; color: #6ee7b7; }
+[data-theme='dark'] .insight-negative { background: #7f1d1d; color: #fca5a5; }
+[data-theme='dark'] .insight-warning  { background: #78350f; color: #fcd34d; }
+[data-theme='dark'] .insight-info     { background: #1e3a5f; color: #93c5fd; }
+
+/* ── Conversion funnel ────────────────────────────────────── */
+.funnel-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.funnel-chart-wrap { flex: 1; }
+.funnel-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  min-width: 240px;
+}
+.funnel-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.fsr-label { color: var(--text-secondary); }
+.fsr-val   { font-weight: 700; color: var(--text-primary); }
+.fsr-val small { font-weight: 500; color: var(--text-secondary); margin-left: 4px; }
+.fsr-val.blue   { color: #1e40af; }
+.fsr-val.purple { color: #7c3aed; }
+.fsr-val.green  { color: #059669; }
+.fsr-val.red    { color: #dc2626; }
+.fsr-val.orange { color: #d97706; }
+
 @media (max-width: 768px) {
   .section-header-row {
     flex-direction: column;
@@ -569,4 +650,8 @@
   .header-title-row {
     flex-wrap: wrap;
   }
+
+  .funnel-layout { flex-direction: column; }
+  .funnel-chart-wrap { flex: unset; }
+  .funnel-stats { grid-template-columns: 1fr; }
 }

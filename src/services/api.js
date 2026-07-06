@@ -45,10 +45,18 @@ export const login = (data) => api.post('/auth/login', data);
 export const getMe = () => api.get('/auth/me');
 
 // Booking APIs
-export const createBooking = (data) => api.post('/bookings', data);
-export const getOldBookings = (params) => api.get('/bookings/old', { params });
-export const getBookingById = (id) => api.get(`/bookings/${id}`);
-export const deleteBooking = (rowNumber) => api.delete(`/bookings/${rowNumber}`);
+export const createBooking      = (data)         => api.post('/bookings', data);
+export const getOldBookings     = (params)        => api.get('/bookings/old', { params });
+export const getBookingById     = (id)            => api.get(`/bookings/${id}`);
+export const deleteBooking      = (rowNumber)     => api.delete(`/bookings/${rowNumber}`);
+export const bulkUpdateStatus   = (data)          => api.post('/bookings/bulk-status', data);
+export const getCustomerHistory = (query)         => api.get('/bookings/customer', { params: { query } });
+export const exportBookings     = (params)        => api.get('/bookings/export', { params, responseType: 'blob' });
+
+// Saved Views APIs
+export const getSavedViews    = ()           => api.get('/saved-views');
+export const createSavedView  = (data)       => api.post('/saved-views', data);
+export const deleteSavedView  = (id)         => api.delete(`/saved-views/${id}`);
 
 // Analytics APIs
 export const getAdPerformance = (params) => api.get('/analytics/ad-performance', { params });
@@ -71,5 +79,12 @@ export const getCallLeads = (params) => api.get('/leads/call', { params });
 export const getBookingLeads = (params) => api.get('/leads/booking', { params });
 export const getLeadCenters = () => api.get('/leads/centers');
 export const updateLead = (type, rowIndex, data) => api.patch(`/leads/${type}/${rowIndex}`, data);
+
+// Config (dropdown options) APIs
+export const getConfig           = ()         => api.get('/config');
+export const addConfigOption     = (data)     => api.post('/config', data);
+export const updateConfigOption  = (id, data) => api.put(`/config/${id}`, data);
+export const deleteConfigOption  = (id)       => api.delete(`/config/${id}`);
+export const reorderConfigOptions = (data)    => api.post('/config/reorder', data);
 
 export default api;

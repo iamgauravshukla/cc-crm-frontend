@@ -13,6 +13,8 @@ import DailyReports from './pages/DailyReports';
 import CCBookingReport from './pages/CCBookingReport';
 import SalesReport from './pages/SalesReport';
 import UsersManagement from './pages/UsersManagement';
+import ConfigPage      from './pages/ConfigPage';
+import CustomerLookup from './pages/CustomerLookup';
 import WebsiteLeads from './pages/WebsiteLeads';
 import LeadsTest from './pages/LeadsTest';
 import './App.css';
@@ -120,6 +122,16 @@ function App() {
             <AdminRoute>
               <UsersManagement />
             </AdminRoute>
+          } />
+          <Route path="/config" element={
+            <AdminRoute>
+              <ConfigPage />
+            </AdminRoute>
+          } />
+          <Route path="/customer-lookup" element={
+            <PrivateRoute>
+              <CustomerLookup />
+            </PrivateRoute>
           } />
           <Route path="/website-leads" element={
             <PrivateRoute>
