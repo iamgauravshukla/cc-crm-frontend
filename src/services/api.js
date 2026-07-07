@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_BASE_URL = process.env.REACT_APP_API_URL ||
   (typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:5001/api'
-    : 'https://cc-crm-backend-production.up.railway.app/api');
+    : 'https://miraculous-serenity-production-5d5a.up.railway.app/api');
 
 const api = axios.create({
   baseURL: API_BASE_URL,
