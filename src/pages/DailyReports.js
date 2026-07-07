@@ -279,7 +279,7 @@ const DailyReports = () => {
           <div className="header-left">
             <h1 className="page-title">📊 Daily Reports</h1>
             <p className="page-subtitle">
-              {new Date().toLocaleDateString('en-US',{ weekday:'long', year:'numeric', month:'long', day:'numeric' })}
+              {new Date().toLocaleDateString('en-US',{ weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone:'Asia/Manila' })}
             </p>
           </div>
           <div className="header-right">

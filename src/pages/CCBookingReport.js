@@ -284,7 +284,7 @@ export default function CCBookingReport() {
         <div className="ccr-header">
           <div>
             <h1 className="ccr-title">📋 CC Booking Report</h1>
-            <p className="ccr-subtitle">Live booking overview — {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            <p className="ccr-subtitle">Live booking overview — {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })}</p>
           </div>
           <div className="ccr-header-actions">
             <span className="ccr-refresh-label">Updated {refreshAt.toLocaleTimeString()}</span>

@@ -52,6 +52,10 @@ export const deleteBooking      = (rowNumber)     => api.delete(`/bookings/${row
 export const bulkUpdateStatus   = (data)          => api.post('/bookings/bulk-status', data);
 export const getCustomerHistory = (query)         => api.get('/bookings/customer', { params: { query } });
 export const exportBookings     = (params)        => api.get('/bookings/export', { params, responseType: 'blob' });
+export const getActivityLog     = (bookingId)     => api.get(`/bookings/${bookingId}/activity`);
+export const getKanbanBookings  = (params)        => api.get('/bookings/kanban', { params });
+export const updateBooking      = (id, data)      => api.put(`/bookings/${id}`, data);
+export const updateValidation   = (id, data)      => api.patch(`/bookings/${id}/validation`, data);
 
 // Saved Views APIs
 export const getSavedViews    = ()           => api.get('/saved-views');

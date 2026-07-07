@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiHome, FiCalendar, FiBarChart2, FiLogOut, FiMenu, FiX, FiPlusCircle, FiMoon, FiSun, FiUsers, FiTrendingUp, FiClipboard, FiDollarSign, FiGlobe, FiSettings, FiSearch } from 'react-icons/fi';
+import { FiHome, FiCalendar, FiBarChart2, FiLogOut, FiMenu, FiX, FiPlusCircle, FiMoon, FiSun, FiUsers, FiTrendingUp, FiClipboard, FiDollarSign, FiGlobe, FiSettings, FiSearch, FiColumns } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import './Sidebar.css';
 
@@ -45,6 +45,7 @@ function Sidebar() {
     { path: '/dashboard', label: 'Dashboard', icon: FiHome, roles: ['Admin', 'Agent'] },
     { path: '/create-booking', label: 'Create New Booking', icon: FiPlusCircle, roles: ['Admin', 'Agent'] },
     { path: '/old-bookings', label: 'Master Bookings', icon: FiCalendar, roles: ['Admin', 'Agent'] },
+    { path: '/kanban',       label: 'Kanban Board',    icon: FiColumns, roles: ['Admin', 'Agent'] },
     { path: '/analytics', label: 'Analytics', icon: FiBarChart2, roles: ['Admin'] },
     { path: '/daily-reports', label: 'Daily Reports', icon: FiClipboard, roles: ['Admin'] },
     { path: '/cc-booking-report', label: 'CC Booking Report', icon: FiBarChart2, roles: ['Admin'] },

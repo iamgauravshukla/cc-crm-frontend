@@ -16,6 +16,7 @@ import UsersManagement from './pages/UsersManagement';
 import ConfigPage      from './pages/ConfigPage';
 import CustomerLookup from './pages/CustomerLookup';
 import WebsiteLeads from './pages/WebsiteLeads';
+import KanbanBoard from './pages/KanbanBoard';
 import LeadsTest from './pages/LeadsTest';
 import './App.css';
 
@@ -136,6 +137,11 @@ function App() {
           <Route path="/website-leads" element={
             <PrivateRoute>
               <WebsiteLeads />
+            </PrivateRoute>
+          } />
+          <Route path="/kanban" element={
+            <PrivateRoute>
+              <KanbanBoard />
             </PrivateRoute>
           } />
           <Route path="/" element={<Navigate to="/dashboard" />} />

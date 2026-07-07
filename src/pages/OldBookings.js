@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera, FiTrash2, FiAlertTriangle, FiDownload, FiBookmark } from 'react-icons/fi';
+import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera, FiTrash2, FiAlertTriangle, FiDownload, FiBookmark, FiClock, FiCheckCircle, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import html2canvas from 'html2canvas';
-import { getOldBookings, deleteBooking, exportBookings, bulkUpdateStatus, getSavedViews, createSavedView, deleteSavedView } from '../services/api';
+import { getOldBookings, deleteBooking, exportBookings, bulkUpdateStatus, getSavedViews, createSavedView, deleteSavedView, getActivityLog, updateBooking, updateValidation } from '../services/api';
 import { useConfig } from '../hooks/useConfig';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
@@ -23,6 +23,40 @@ function useDebounce(value, delay) {
 
   return debouncedValue;
 }
+
+const FIELD_LABELS = {
+  booking_status:       'Status',
+  branch:               'Branch',
+  appointment_date:     'Appointment Date',
+  appointment_time:     'Appointment Time',
+  first_name:           'First Name',
+  last_name:            'Last Name',
+  age:                  'Age',
+  gender:               'Gender',
+  email:                'Email',
+  phone:                'Phone',
+  social_media:         'Social Media',
+  treatment:            'Treatment',
+  area:                 'Area',
+  freebie:              'Freebie',
+  total_price:          'Total Price',
+  payment_mode:         'Payment Mode',
+  agent:                'Agent',
+  booking_details:      'Booking Details',
+  ad_interacted:        'Ad Interacted',
+  companion_treatment:  'Companion Treatment',
+  companion_first_name: 'Companion First Name',
+  companion_last_name:  'Companion Last Name',
+  companion_age:        'Companion Age',
+  companion_gender:     'Companion Gender',
+  companion_freebie:    'Companion Freebie',
+  remarks:              'Remarks',
+  purchase_details:     'Purchase Details',
+  follow_up_date:       'Follow-up Date',
+  is_ots:               'OTS',
+  is_high_priority:     'High Priority',
+  is_meta_conversion:   'Meta Conversion',
+};
 
 function OldBookings() {
   const [user, setUser] = useState(null);
@@ -71,6 +105,9 @@ function OldBookings() {
   const [updateLoading, setUpdateLoading] = useState(false);
   const [updateError, setUpdateError] = useState('');
   const [updateSuccess, setUpdateSuccess] = useState('');
+  const [modalTab, setModalTab] = useState('edit');
+  const [activityLog, setActivityLog] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
   // Track which rows have in-flight validation updates
   const [validationUpdating, setValidationUpdating] = useState({});
 
@@ -451,45 +488,69 @@ function OldBookings() {
       if (ap === 'AM' && h === 12) h = 0;
       return `${String(h).padStart(2, '0')}:${mn}`;
     })();
+    // Case-insensitive match against config options (handles imported data with different casing)
+    const matchConfig = (val, arr) => {
+      if (!val) return '';
+      return arr.find(o => o.toLowerCase() === val.toLowerCase()) || val;
+    };
     setEditFormData({
       rowNumber: booking.rowNumber,
       date: dateVal,
       time: timeVal,
-      branch: booking.branch || '',
-      status: booking.status || '',
+      branch: matchConfig(booking.branch, cfgOptions.branches),
+      status: matchConfig(booking.status, cfgOptions.statuses),
       firstName: booking.firstName || '',
       lastName: booking.lastName || '',
-      age: booking.age || '',
+      age: booking.age ?? '',
       gender: booking.gender || '',
       phone: booking.phone || '',
       socialMedia: booking.socialMedia || '',
       email: booking.email || '',
-      treatment: booking.treatment || '',
+      treatment: matchConfig(booking.treatment, cfgOptions.treatments),
       area: booking.area || '',
       freebie: booking.freebie || '',
-      totalPrice: booking.totalPrice || '',
+      totalPrice: booking.totalPrice ?? 0,
       paymentMode: booking.paymentMode || '',
-      agent: booking.agent || '',
+      agent: matchConfig(booking.agent, cfgOptions.agents),
       bookingDetails: booking.bookingDetails || '',
       adInteracted: booking.adInteracted || '',
       remarks: booking.remarks || '',
       purchaseDetails: booking.purchaseDetails || '',
       companionFirstName: booking.companionFirstName || '',
       companionLastName: booking.companionLastName || '',
-      companionAge: booking.companionAge || '',
+      companionAge: booking.companionAge ?? '',
       companionGender: booking.companionGender || '',
-      companionTreatment: booking.companionTreatment || '',
+      companionTreatment: matchConfig(booking.companionTreatment, cfgOptions.treatments),
       companionFreebie: booking.companionFreebie || '',
       companionArea: booking.companionArea || '',
       isOts: booking.isOts || false,
       isAdId: booking.isAdId || false,
       isCompanion: booking.isCompanion || false,
       isHighPriority: booking.isHighPriority || false,
+      isMetaConversion: booking.isMetaConversion || false,
       followUpDate: booking.followUpDate || '',
+      bookingDate: booking.bookingDate || '',
+      bookingTime: (() => {
+        if (!booking.bookingTime) return '';
+        const bm = booking.bookingTime.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!bm) return '';
+        let bh = parseInt(bm[1], 10);
+        if (bm[3].toUpperCase() === 'PM' && bh !== 12) bh += 12;
+        if (bm[3].toUpperCase() === 'AM' && bh === 12) bh = 0;
+        return `${String(bh).padStart(2, '0')}:${bm[2]}`;
+      })(),
     });
     setUpdateError('');
     setUpdateSuccess('');
+    setModalTab('edit');
+    setActivityLog([]);
     setIsEditModalOpen(true);
+    // Fetch activity log in the background
+    setActivityLoading(true);
+    getActivityLog(booking.rowNumber || booking.recordId || booking.record_id)
+      .then(r => setActivityLog(r.data.log || []))
+      .catch(() => {})
+      .finally(() => setActivityLoading(false));
   };
 
   const handleEditFormChange = (e) => {
@@ -507,31 +568,16 @@ function OldBookings() {
     setUpdateSuccess('');
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://cc-crm-backend-production.up.railway.app/api'}/bookings/${editFormData.rowNumber}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(editFormData)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update booking');
-      }
+      await updateBooking(editFormData.rowNumber, editFormData);
 
       setUpdateSuccess('Booking updated successfully!');
-      
-      // Refresh bookings list
       setTimeout(() => {
         fetchBookings();
         setIsEditModalOpen(false);
         setEditingBooking(null);
       }, 1500);
     } catch (err) {
-      setUpdateError(err.message || 'Failed to update booking');
+      setUpdateError(err.response?.data?.error || err.message || 'Failed to update booking');
     } finally {
       setUpdateLoading(false);
     }
@@ -556,26 +602,12 @@ function OldBookings() {
     };
 
     try {
-      const apiBase = process.env.REACT_APP_API_URL || 'https://cc-crm-backend-production.up.railway.app/api';
-      const res = await fetch(`${apiBase}/bookings/${booking.rowNumber}/validation`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(body)
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        console.error('Validation update failed:', d.error);
-      } else {
-        // Optimistically update local state so UI responds instantly
-        setBookings(prev => prev.map(b =>
-          b.rowNumber === booking.rowNumber ? { ...b, [field]: newVal } : b
-        ));
-      }
+      await updateValidation(booking.rowNumber, body);
+      setBookings(prev => prev.map(b =>
+        b.rowNumber === booking.rowNumber ? { ...b, [field]: newVal } : b
+      ));
     } catch (err) {
-      console.error('Validation toggle error:', err);
+      console.error('Validation toggle error:', err.response?.data?.error || err.message);
     } finally {
       setValidationUpdating(prev => { const n = { ...prev }; delete n[key]; return n; });
     }
@@ -880,7 +912,9 @@ function OldBookings() {
                         />
                       </th>
                       <th>Actions</th>
+                      <th className="id-flags-col" title="Identifiers">Flags</th>
                       <th>Booking Schedule</th>
+                      <th>Booked On</th>
                       <th>Branch</th>
                       <th>Status</th>
                       <th>First Name</th>
@@ -933,15 +967,36 @@ function OldBookings() {
                             <FiEdit2 size={16} />
                           </button>
                         </td>
+                        <td className="id-flags-cell">
+                          {booking.isOts            && <span className="id-badge id-ots"  title="On-the-spot">OTS</span>}
+                          {booking.isAdId            && <span className="id-badge id-adid" title="Ad ID">AD</span>}
+                          {booking.isHighPriority    && <span className="id-badge id-hp"   title="High Priority">HP</span>}
+                          {booking.isCompanion       && <span className="id-badge id-comp" title="Companion">CO</span>}
+                          {booking.isMetaConversion  && <span className="id-badge id-meta" title="Meta Conversion">MC</span>}
+                        </td>
                         <td>
                           <div style={{whiteSpace: 'nowrap'}}>
                             {booking.date ? (
                               <>
                                 <div style={{fontSize: '14px', fontWeight: '600'}}>
-                                  {booking.date.split(' ').slice(0, 3).join(' ')}
+                                  {new Date(booking.date + 'T00:00:00').toLocaleDateString('en-PH', {month:'short',day:'numeric',year:'numeric'})}
                                 </div>
                                 <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px'}}>
-                                  {booking.date.split(' ').slice(3).join(' ')}
+                                  {booking.time || ''}
+                                </div>
+                              </>
+                            ) : '-'}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{whiteSpace: 'nowrap'}}>
+                            {booking.bookingDate ? (
+                              <>
+                                <div style={{fontSize: '14px', fontWeight: '600'}}>
+                                  {new Date(booking.bookingDate + 'T00:00:00').toLocaleDateString('en-PH', {month:'short',day:'numeric',year:'numeric'})}
+                                </div>
+                                <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px'}}>
+                                  {booking.bookingTime || ''}
                                 </div>
                               </>
                             ) : '-'}
@@ -1028,7 +1083,9 @@ function OldBookings() {
                         {(booking.status || '').toLowerCase() === 'promo hunter' && (
                           <span className="promo-hunter-badge-inline">🎯 Promo Hunter</span>
                         )}
-                        <span className="card-date">{booking.date || '-'} • {booking.timestamp ? new Date(booking.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                        <span className="card-date">
+                          {booking.date ? new Date(booking.date + 'T00:00:00').toLocaleDateString('en-PH', {month:'short',day:'numeric',year:'numeric'}) : '-'}{booking.time ? ` • ${booking.time}` : ''}
+                        </span>
                       </div>
                       <div className="card-header-right">
                         <span className={getStatusClass(booking.status)}>
@@ -1155,10 +1212,11 @@ function OldBookings() {
                         <div className="card-section">
                           <h4>Identifiers</h4>
                           <div style={{display:'flex',gap:'8px',flexWrap:'wrap'}}>
-                            {booking.isOts         && <span className="val-badge" style={{background:'#0ea5e9',color:'#fff'}}>OTS</span>}
-                            {booking.isAdId        && <span className="val-badge" style={{background:'#8b5cf6',color:'#fff'}}>Ad ID</span>}
-                            {booking.isCompanion   && <span className="val-badge" style={{background:'#f59e0b',color:'#fff'}}>Companion</span>}
-                            {booking.isHighPriority && <span className="val-badge" style={{background:'#ef4444',color:'#fff'}}>High Priority</span>}
+                            {booking.isOts           && <span className="id-badge id-ots" >OTS</span>}
+                            {booking.isAdId          && <span className="id-badge id-adid">Ad ID</span>}
+                            {booking.isCompanion     && <span className="id-badge id-comp">Companion</span>}
+                            {booking.isHighPriority  && <span className="id-badge id-hp"  >High Priority</span>}
+                            {booking.isMetaConversion && <span className="id-badge id-meta">Meta Conv.</span>}
                           </div>
                         </div>
                       )}
@@ -1212,20 +1270,102 @@ function OldBookings() {
 
         {/* Edit Modal */}
         {isEditModalOpen && (
-          <div className="modal-overlay" onClick={closeEditModal}>
-            <div className="modal-content edit-booking-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>Edit Booking</h2>
-                <button className="modal-close-btn" onClick={closeEditModal}>
-                  <FiX size={24} />
+          <>
+            <div className="flyout-backdrop" onClick={closeEditModal} />
+            <div className="flyout-panel">
+              <div className="flyout-header">
+                <div className="flyout-header-info">
+                  <h2 className="flyout-title">Edit Booking</h2>
+                  {editFormData.rowNumber && <span className="flyout-record-id">{editFormData.rowNumber}</span>}
+                </div>
+                <button className="flyout-close-btn" onClick={closeEditModal} title="Close">
+                  <FiX size={20} />
                 </button>
               </div>
 
-              {updateError && <div className="alert alert-error">{updateError}</div>}
-              {updateSuccess && <div className="alert alert-success">{updateSuccess}</div>}
+              {/* Tab switcher */}
+              <div className="modal-tab-bar">
+                <button className={`modal-tab-btn${modalTab === 'edit' ? ' active' : ''}`} onClick={() => setModalTab('edit')}>
+                  <FiEdit2 size={13} /> Edit
+                </button>
+                <button className={`modal-tab-btn${modalTab === 'activity' ? ' active' : ''}`} onClick={() => setModalTab('activity')}>
+                  <FiClock size={13} /> Activity Log {activityLog.length > 0 && <span className="tab-badge">{activityLog.length}</span>}
+                </button>
+              </div>
 
-              <form onSubmit={handleUpdateBooking} className="edit-booking-form">
+              {updateError && modalTab === 'edit' && <div className="alert alert-error">{updateError}</div>}
+              {updateSuccess && modalTab === 'edit' && <div className="alert alert-success">{updateSuccess}</div>}
+
+              {/* Activity Log Panel */}
+              {modalTab === 'activity' && (
+                <div className="activity-log-panel">
+                  {activityLoading ? (
+                    <div className="activity-loading"><FiRefreshCw size={18} className="spin" /> Loading history…</div>
+                  ) : activityLog.length === 0 ? (
+                    <div className="activity-empty">No activity recorded yet.</div>
+                  ) : (
+                    <div className="activity-timeline">
+                      {activityLog.map(entry => (
+                        <div key={entry.id} className={`activity-entry activity-${entry.action.toLowerCase()}`}>
+                          <div className="activity-icon">
+                            {entry.action === 'CREATED'      && <FiCheckCircle size={15} />}
+                            {entry.action === 'STATUS_CHANGED'&& <FiRefreshCw   size={15} />}
+                            {entry.action === 'UPDATED'       && <FiEdit2       size={15} />}
+                            {entry.action === 'BULK_STATUS'   && <FiAlertCircle size={15} />}
+                          </div>
+                          <div className="activity-body">
+                            <div className="activity-meta">
+                              <span className="activity-user">{entry.user_name}</span>
+                              <span className="activity-action-label">
+                                {entry.action === 'CREATED'       && 'created this booking'}
+                                {entry.action === 'STATUS_CHANGED' && 'changed status'}
+                                {entry.action === 'UPDATED'        && 'updated booking'}
+                                {entry.action === 'BULK_STATUS'    && 'bulk-updated status'}
+                              </span>
+                              <span className="activity-time">{new Date(entry.created_at).toLocaleString()}</span>
+                            </div>
+                            {Object.keys(entry.changes || {}).length > 0 && (
+                              <div className="activity-changes">
+                                {Object.entries(entry.changes).map(([field, { from, to }]) => (
+                                  <div key={field} className="activity-change-row">
+                                    <span className="ac-field">{FIELD_LABELS[field] || field.replace(/_/g, ' ')}</span>
+                                    {from != null && from !== '' && <span className="ac-from">{String(from)}</span>}
+                                    {from != null && from !== '' && <span className="ac-arrow">→</span>}
+                                    <span className="ac-to">{to != null && to !== '' ? String(to) : '(cleared)'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateBooking} className="edit-booking-form" style={{ display: modalTab === 'edit' ? undefined : 'none' }}>
                 <div className="modal-form-grid">
+                  <div className="form-group">
+                    <label>Booking Date</label>
+                    <input
+                      type="date"
+                      name="bookingDate"
+                      value={editFormData.bookingDate}
+                      onChange={handleEditFormChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Booking Time</label>
+                    <input
+                      type="time"
+                      name="bookingTime"
+                      value={editFormData.bookingTime}
+                      onChange={handleEditFormChange}
+                    />
+                  </div>
+
                   <div className="form-group">
                     <label>Appointment Date *</label>
                     <input
@@ -1349,6 +1489,9 @@ function OldBookings() {
                       {treatments.map(treatment => (
                         <option key={treatment} value={treatment}>{treatment}</option>
                       ))}
+                      {editFormData.treatment && !treatments.includes(editFormData.treatment) && (
+                        <option value={editFormData.treatment}>{editFormData.treatment}</option>
+                      )}
                     </select>
                   </div>
 
@@ -1411,6 +1554,9 @@ function OldBookings() {
                       {agents.map(agent => (
                         <option key={agent} value={agent}>{agent}</option>
                       ))}
+                      {editFormData.agent && !agents.includes(editFormData.agent) && (
+                        <option value={editFormData.agent}>{editFormData.agent}</option>
+                      )}
                     </select>
                   </div>
 
@@ -1476,6 +1622,10 @@ function OldBookings() {
                         <input type="checkbox" name="isHighPriority" checked={!!editFormData.isHighPriority} onChange={handleEditFormChange} />
                         High Priority
                       </label>
+                      <label style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'14px'}}>
+                        <input type="checkbox" name="isMetaConversion" checked={!!editFormData.isMetaConversion} onChange={handleEditFormChange} />
+                        Meta Conversion
+                      </label>
                     </div>
                   </div>
 
@@ -1536,6 +1686,9 @@ function OldBookings() {
                       {treatments.map(treatment => (
                         <option key={treatment} value={treatment}>{treatment}</option>
                       ))}
+                      {editFormData.companionTreatment && !treatments.includes(editFormData.companionTreatment) && (
+                        <option value={editFormData.companionTreatment}>{editFormData.companionTreatment}</option>
+                      )}
                     </select>
                   </div>
 
@@ -1572,7 +1725,7 @@ function OldBookings() {
                 </div>
               </form>
             </div>
-          </div>
+          </>
         )}
 
         {/* ── Delete Confirmation Modal ── */}

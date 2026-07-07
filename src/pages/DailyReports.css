@@ -72,8 +72,8 @@ body.sidebar-collapsed .daily-reports-container {
   transition: background 0.15s, color 0.15s;
 }
 
-.btn-icon-primary:hover  { background: #2563eb; color: #fff; border-color: #2563eb; }
-.btn-icon-primary.active { background: #1e40af; color: #fff; border-color: #1e40af; }
+.btn-icon-primary:hover  { background: #579bfc; color: #fff; border-color: #579bfc; }
+.btn-icon-primary.active { background: #0073ea; color: #fff; border-color: #0073ea; }
 
 /* ── Error ───────────────────────────────────────────────────────────────────── */
 .dr-error {
@@ -166,7 +166,7 @@ body.sidebar-collapsed .daily-reports-container {
   transition: background 0.15s;
 }
 
-.dr-expand-btn:hover { background: #2563eb; color: #fff; border-color: #2563eb; }
+.dr-expand-btn:hover { background: #579bfc; color: #fff; border-color: #579bfc; }
 
 /* ── No data placeholder ─────────────────────────────────────────────────────── */
 .dr-nodata {
@@ -182,22 +182,22 @@ body.sidebar-collapsed .daily-reports-container {
 
 /* ── Snapshot selection ──────────────────────────────────────────────────────── */
 .snap-selectable { cursor: pointer; transition: outline 0.15s, box-shadow 0.15s; }
-.snap-selectable:hover { outline: 2px dashed #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,0.08); }
-.snap-selected  { outline: 2px solid #1e40af !important; box-shadow: 0 0 0 4px rgba(30,64,175,0.15) !important; }
+.snap-selectable:hover { outline: 2px dashed #579bfc; box-shadow: 0 0 0 4px rgba(87,155,252,0.08); }
+.snap-selected  { outline: 2px solid #0073ea !important; box-shadow: 0 0 0 4px rgba(0,115,234,0.15) !important; }
 
 .snap-check {
   position: absolute;
   top: 10px; right: 10px;
   width: 22px; height: 22px;
   border-radius: 6px;
-  border: 2px solid #1e40af;
+  border: 2px solid #0073ea;
   background: #fff;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 700; color: #1e40af;
+  font-size: 13px; font-weight: 700; color: #0073ea;
   z-index: 10;
 }
 
-.snap-selected .snap-check { background: #1e40af; color: #fff; }
+.snap-selected .snap-check { background: #0073ea; color: #fff; }
 
 /* ── Snapshot floating bar ───────────────────────────────────────────────────── */
 .snapshot-bar {
@@ -227,8 +227,8 @@ body.sidebar-collapsed .daily-reports-container {
 .snapshot-bar-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .snapshot-bar-btn.outline { background: transparent; border: 1px solid #475569; color: #cbd5e1; }
 .snapshot-bar-btn.outline:hover:not(:disabled) { background: #334155; }
-.snapshot-bar-btn.primary { background: #2563eb; color: #fff; }
-.snapshot-bar-btn.primary:hover:not(:disabled) { background: #1e40af; }
+.snapshot-bar-btn.primary { background: #579bfc; color: #fff; }
+.snapshot-bar-btn.primary:hover:not(:disabled) { background: #0073ea; }
 .snapshot-bar-btn.cancel  { background: #374151; color: #9ca3af; padding: 6px 10px; }
 .snapshot-bar-btn.cancel:hover { background: #4b5563; }
 
@@ -264,7 +264,7 @@ body.sidebar-collapsed .daily-reports-container {
   justify-content: space-between;
   padding: 20px 24px;
   border-bottom: 1px solid var(--border-primary);
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #579bfc 0%, #0073ea 100%);
 }
 
 .modal-header h2 {
@@ -303,7 +303,7 @@ body.sidebar-collapsed .daily-reports-container {
   flex: 1;
   padding: 0;
   scrollbar-width: thin;
-  scrollbar-color: #2563eb var(--bg-secondary);
+  scrollbar-color: #579bfc var(--bg-secondary);
 }
 
 .bookings-table-wrapper::-webkit-scrollbar {
@@ -318,13 +318,13 @@ body.sidebar-collapsed .daily-reports-container {
 }
 
 .bookings-table-wrapper::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #2563eb, #1e40af);
+  background: linear-gradient(135deg, #579bfc, #0073ea);
   border-radius: 10px;
   border: 2px solid var(--bg-secondary);
 }
 
 .bookings-table-wrapper::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+  background: linear-gradient(135deg, #0060c0, #0060c0);
 }
 
 .bookings-table-wrapper::-webkit-scrollbar-corner {
@@ -363,7 +363,7 @@ body.sidebar-collapsed .daily-reports-container {
 
 .contact-cell .contact-info { display: flex; gap: 8px; }
 .contact-info a { color: var(--text-secondary); transition: color 0.15s; }
-.contact-info a:hover { color: #2563eb; }
+.contact-info a:hover { color: #579bfc; }
 
 /* ── Status badges ───────────────────────────────────────────────────────────── */
 .status-badge {
@@ -377,7 +377,7 @@ body.sidebar-collapsed .daily-reports-container {
   color: var(--text-secondary);
 }
 
-.status-scheduled                { background: #dbeafe; color: #1e40af; }
+.status-scheduled                { background: #dbeafe; color: #0073ea; }
 .status-arrived-\&-bought        { background: #d1fae5; color: #065f46; }
 .status-arrived-not-potential    { background: #e0e7ff; color: #3730a3; }
 .status-cancelled                { background: #fee2e2; color: #991b1b; }
@@ -390,7 +390,7 @@ body.sidebar-collapsed .daily-reports-container {
 .status-old-client               { background: #f3f4f6; color: #374151; }
 .status-on-the-way               { background: #fef9c3; color: #713f12; }
 
-.dark .status-scheduled              { background: #1e3a8a; color: #93c5fd; }
+.dark .status-scheduled              { background: #0060c0; color: #93c5fd; }
 .dark .status-arrived-\&-bought      { background: #064e3b; color: #6ee7b7; }
 .dark .status-cancelled              { background: #7f1d1d; color: #fca5a5; }
 
@@ -409,7 +409,7 @@ body.sidebar-collapsed .daily-reports-container {
 .dr-drilldown {
   background: var(--card-bg);
   border: 1px solid var(--border-primary);
-  border-top: 2px solid #2563eb;
+  border-top: 2px solid #579bfc;
   border-radius: 0 0 14px 14px;
   overflow: hidden;
   box-shadow: 0 6px 20px var(--card-shadow);
@@ -475,7 +475,7 @@ body.sidebar-collapsed .daily-reports-container {
   max-height: 320px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #2563eb var(--bg-secondary);
+  scrollbar-color: #579bfc var(--bg-secondary);
 }
 
 .dr-drilldown-table-wrap::-webkit-scrollbar {
@@ -490,13 +490,13 @@ body.sidebar-collapsed .daily-reports-container {
 }
 
 .dr-drilldown-table-wrap::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #2563eb, #1e40af);
+  background: linear-gradient(135deg, #579bfc, #0073ea);
   border-radius: 10px;
   border: 2px solid var(--bg-secondary);
 }
 
 .dr-drilldown-table-wrap::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+  background: linear-gradient(135deg, #0060c0, #0060c0);
 }
 
 .dr-drilldown-table-wrap::-webkit-scrollbar-corner {

@@ -2,11 +2,17 @@
   display: flex;
   gap: 12px;
   margin-bottom: 28px;
+  align-items: stretch;
 }
 
 .lookup-input-wrap {
-  flex: 1;
+  flex: 0 0 80%;
   position: relative;
+}
+
+.lookup-search-bar .btn {
+  flex: 0 0 calc(20% - 12px);
+  min-width: 0;
 }
 
 .lookup-search-icon {

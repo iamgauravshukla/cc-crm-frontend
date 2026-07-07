@@ -359,8 +359,8 @@ function Dashboard({ onLogout }) {
                   <table className="bookings-table">
                     <thead>
                       <tr>
-                        <th>Time</th>
-                        <th>Date</th>
+                        <th>Booking Created</th>
+                        <th>Appointment On</th>
                         <th>Branch</th>
                         <th>Customer</th>
                         <th>Age</th>
@@ -390,8 +390,43 @@ function Dashboard({ onLogout }) {
                     <tbody>
                       {dashboardData.todayBookings.map((booking, index) => (
                         <tr key={index}>
-                          <td>{booking.timestamp ? new Date(booking.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                          <td>{booking.date || '-'}</td>
+                          <td>
+                            <div style={{whiteSpace:'nowrap'}}>
+                              {booking.bookingDate ? (
+                                <>
+                                  <div style={{fontSize:'13px',fontWeight:'600'}}>
+                                    {new Date(booking.bookingDate + 'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}
+                                  </div>
+                                  <div style={{fontSize:'12px',color:'var(--text-secondary)'}}>
+                                    {booking.bookingTime || ''}
+                                  </div>
+                                </>
+                              ) : booking.timestamp ? (
+                                <>
+                                  <div style={{fontSize:'13px',fontWeight:'600'}}>
+                                    {new Date(booking.timestamp).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric',timeZone:'Asia/Manila'})}
+                                  </div>
+                                  <div style={{fontSize:'12px',color:'var(--text-secondary)'}}>
+                                    {new Date(booking.timestamp).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Manila'})}
+                                  </div>
+                                </>
+                              ) : '-'}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{whiteSpace:'nowrap'}}>
+                              {booking.date ? (
+                                <>
+                                  <div style={{fontSize:'13px',fontWeight:'600'}}>
+                                    {new Date(booking.date + 'T00:00:00').toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})}
+                                  </div>
+                                  <div style={{fontSize:'12px',color:'var(--text-secondary)'}}>
+                                    {booking.appointmentTime || ''}
+                                  </div>
+                                </>
+                              ) : '-'}
+                            </div>
+                          </td>
                           <td>{booking.branch}</td>
                           <td>{booking.customer}</td>
                           <td>{booking.age || '-'}</td>
