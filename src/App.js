@@ -17,6 +17,7 @@ import ConfigPage      from './pages/ConfigPage';
 import CustomerLookup from './pages/CustomerLookup';
 import WebsiteLeads from './pages/WebsiteLeads';
 import KanbanBoard from './pages/KanbanBoard';
+import ImportData from './pages/ImportData';
 import LeadsTest from './pages/LeadsTest';
 import './App.css';
 
@@ -143,6 +144,11 @@ function App() {
             <PrivateRoute>
               <KanbanBoard />
             </PrivateRoute>
+          } />
+          <Route path="/import-data" element={
+            <AdminRoute>
+              <ImportData />
+            </AdminRoute>
           } />
           <Route path="/" element={<Navigate to="/dashboard" />} />
         </Routes>

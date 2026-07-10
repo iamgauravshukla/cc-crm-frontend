@@ -556,7 +556,7 @@ function Analytics() {
                   dataLabels: { enabled: false },
                   legend: { position: 'top', labels: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } },
                   grid: { strokeDashArray: 4, borderColor: isDarkMode ? '#334155' : '#e5e7eb' },
-                  tooltip: { y: { formatter: (val, opts) => opts.seriesIndex === 1 ? `₱${Number(val).toLocaleString()}` : val } }
+                  tooltip: { y: { formatter: (val, opts) => opts.seriesIndex === 1 ? `₱${Number(val).toLocaleString()}` : (val ?? 0) } }
                 }}
                 series={[
                   { name: 'Bookings', data: agentPerformance.slice(0, 10).map(a => a.bookings) },
@@ -688,7 +688,7 @@ function Analytics() {
                   ...getChartTheme(),
                   chart: { ...getChartTheme().chart, type: 'line', toolbar: { show: true } },
                   colors: ['#1e40af', '#10B981'],
-                  xaxis: { categories: timeSeriesData.byMonth.map(m => m.month), labels: { rotate: -45, style: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } } },
+                  xaxis: { categories: timeSeriesData.byMonth.map(m => m.month || ''), labels: { rotate: -45, style: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } } },
                   yaxis: [
                     { 
                       title: { text: 'Bookings', style: { color: isDarkMode ? '#cbd5e1' : '#64748b' } }, 
@@ -707,7 +707,7 @@ function Analytics() {
                   markers: { size: 4 },
                   grid: { strokeDashArray: 4, borderColor: isDarkMode ? '#334155' : '#e5e7eb' },
                   legend: { position: 'top', labels: { colors: isDarkMode ? '#cbd5e1' : '#64748b' } },
-                  tooltip: { y: { formatter: (val, opts) => opts.seriesIndex === 1 ? `₱${Number(val).toLocaleString()}` : val } }
+                  tooltip: { y: { formatter: (val, opts) => opts.seriesIndex === 1 ? `₱${Number(val).toLocaleString()}` : (val ?? 0) } }
                 }}
                 series={[
                   { name: 'Bookings', type: 'column', data: timeSeriesData.byMonth.map(m => m.count) },
