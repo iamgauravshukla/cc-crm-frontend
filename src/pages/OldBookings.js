@@ -64,7 +64,8 @@ function OldBookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useState('appointment_date');
+  const [sortDir,   setSortDir]   = useState('desc');
   const [viewMode, setViewMode] = useState('table');
   const cardRefs = useRef({});
   const [page, setPage] = useState(1);
@@ -152,7 +153,8 @@ function OldBookings() {
         page,
         limit,
         search: debouncedSearchTerm,
-        sortOrder: sortOrder === 'desc' ? 'newest' : 'oldest',
+        sortField,
+        sortOrder: sortDir === 'desc' ? 'newest' : 'oldest',
         ...deriveApiParams(activeFilters)
       };
       
@@ -181,15 +183,20 @@ function OldBookings() {
     fetchBookings();
     setSelectedIds(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, debouncedSearchTerm, activeFilters, sortOrder]);
+  }, [page, debouncedSearchTerm, activeFilters, sortField, sortDir]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
     setPage(1);
   };
 
-  const toggleSort = () => {
-    setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+  const handleColumnSort = (field) => {
+    if (sortField === field) {
+      setSortDir(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortField(field);
+      setSortDir('desc');
+    }
     setPage(1);
   };
 
@@ -238,7 +245,7 @@ function OldBookings() {
     { key: 'agent',           fieldLabel: 'Agent',            type: 'select',     multiSelect: true,  options: agents },
     { key: 'gender',          fieldLabel: 'Gender',           type: 'select',     multiSelect: false, options: ['Male', 'Female'] },
     {
-      key: 'createdDate', fieldLabel: 'Booking Created', type: 'datepreset',
+      key: 'createdDate', fieldLabel: 'Booked On', type: 'datepreset',
       options: [
         { value: 'today',  label: 'Today' },
         { value: 'last7',  label: 'Last 7 Days' },
@@ -250,10 +257,16 @@ function OldBookings() {
     {
       key: 'appointmentDate', fieldLabel: 'Appointment Date', type: 'datepreset',
       options: [
-        { value: 'today',    label: 'Today' },
-        { value: 'tomorrow', label: 'Tomorrow' },
-        { value: 'thisWeek', label: 'This Week' },
-        { value: 'custom',   label: 'Custom Range' },
+        { value: 'today',     label: 'Today' },
+        { value: 'tomorrow',  label: 'Tomorrow' },
+        { value: 'thisWeek',  label: 'This Week' },
+        { value: 'next7',     label: 'Next 7 Days' },
+        { value: 'next30',    label: 'Next 30 Days' },
+        { value: 'thisMonth', label: 'This Month' },
+        { value: 'last30',    label: 'Last 30 Days' },
+        { value: 'last90',    label: 'Last 90 Days' },
+        { value: 'lastMonth', label: 'Last Month' },
+        { value: 'custom',    label: 'Custom Range' },
       ]
     },
   ];
@@ -647,9 +660,9 @@ function OldBookings() {
                 <span>Filter</span>
                 {activeFilters.length > 0 && <span className="qf-count-badge">{activeFilters.length}</span>}
               </button>
-              <button className="qf-toolbar-btn" onClick={toggleSort}>
-                {sortOrder === 'desc' ? <FiArrowDown size={14} /> : <FiArrowUp size={14} />}
-                <span>{sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}</span>
+              <button className="qf-toolbar-btn" onClick={() => handleColumnSort(sortField)}>
+                {sortDir === 'desc' ? <FiArrowDown size={14} /> : <FiArrowUp size={14} />}
+                <span>{sortDir === 'desc' ? 'Newest first' : 'Oldest first'}</span>
               </button>
             </div>
             <div className="qf-right">
@@ -913,13 +926,28 @@ function OldBookings() {
                       </th>
                       <th>Actions</th>
                       <th className="id-flags-col" title="Identifiers">Flags</th>
-                      <th>Booking Schedule</th>
-                      <th>Booked On</th>
+                      <th className="sortable-th" onClick={() => handleColumnSort('appointment_date')}>
+                        Booking Schedule
+                        {sortField === 'appointment_date'
+                          ? (sortDir === 'desc' ? <FiArrowDown size={11} style={{marginLeft:4,verticalAlign:'middle'}} /> : <FiArrowUp size={11} style={{marginLeft:4,verticalAlign:'middle'}} />)
+                          : <FiArrowDown size={11} style={{marginLeft:4,verticalAlign:'middle',opacity:0.25}} />}
+                      </th>
+                      <th className="sortable-th" onClick={() => handleColumnSort('booking_date')}>
+                        Booked On
+                        {sortField === 'booking_date'
+                          ? (sortDir === 'desc' ? <FiArrowDown size={11} style={{marginLeft:4,verticalAlign:'middle'}} /> : <FiArrowUp size={11} style={{marginLeft:4,verticalAlign:'middle'}} />)
+                          : <FiArrowDown size={11} style={{marginLeft:4,verticalAlign:'middle',opacity:0.25}} />}
+                      </th>
                       <th>Branch</th>
                       <th>Status</th>
                       <th>First Name</th>
                       <th>Last Name</th>
-                      <th>Age</th>
+                      <th className="sortable-th" onClick={() => handleColumnSort('age')}>
+                        Age
+                        {sortField === 'age'
+                          ? (sortDir === 'desc' ? <FiArrowDown size={11} style={{marginLeft:4,verticalAlign:'middle'}} /> : <FiArrowUp size={11} style={{marginLeft:4,verticalAlign:'middle'}} />)
+                          : <FiArrowDown size={11} style={{marginLeft:4,verticalAlign:'middle',opacity:0.25}} />}
+                      </th>
                       <th>Gender</th>
                       <th>Treatment</th>
                       <th>Treatment Area</th>

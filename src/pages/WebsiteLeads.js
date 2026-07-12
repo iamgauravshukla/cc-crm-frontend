@@ -291,13 +291,13 @@ function WebsiteLeads() {
 
           {/* API Usage hint for developers */}
           <div className="leads-api-hint">
-            <strong>Website Integration</strong>
+            <strong>Website Integration — Backend URL</strong>
             <span>
               Consultancy Call:&nbsp;
-              <code>POST /api/leads?type=call&amp;center=YOUR_CENTER</code>
+              <code>POST https://miraculous-serenity-production-5d5a.up.railway.app/api/leads?type=call&amp;center=YOUR_CENTER</code>
               &nbsp;·&nbsp;
               Direct Booking:&nbsp;
-              <code>POST /api/leads?type=booking&amp;center=YOUR_CENTER</code>
+              <code>POST https://miraculous-serenity-production-5d5a.up.railway.app/api/leads?type=booking&amp;center=YOUR_CENTER</code>
             </span>
           </div>
 
