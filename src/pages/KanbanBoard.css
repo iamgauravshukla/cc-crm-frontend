@@ -357,6 +357,20 @@ body.sidebar-collapsed .kanban-main {
 .card-flag.dnc  { background: #fee2e2; color: #dc2626; }
 .card-flag.rsch { background: #d1fae5; color: #065f46; }
 
+.card-edit-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  transition: background .15s, color .15s;
+}
+.card-edit-btn:hover { background: rgba(87,155,252,.15); color: #2563eb; }
+[data-theme='dark'] .card-edit-btn:hover { background: rgba(87,155,252,.25); color: #93c5fd; }
+
 .card-treatment {
   font-size: 12px;
   color: var(--text-secondary, #64748b);

@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FiRefreshCw, FiColumns, FiChevronLeft, FiChevronRight, FiStar, FiAlertTriangle, FiClock } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FiRefreshCw, FiColumns, FiChevronLeft, FiChevronRight, FiStar, FiAlertTriangle, FiClock, FiEdit2 } from 'react-icons/fi';
 import { getKanbanBookings, updateBooking } from '../services/api';
 import { useConfig } from '../hooks/useConfig';
 import Sidebar from '../components/Sidebar';
+import BookingEditModal from '../components/BookingEditModal';
 import './KanbanBoard.css';
 
 const STATUS_COLORS = {
@@ -43,6 +44,10 @@ export default function KanbanBoard() {
   const [draggedId, setDraggedId]   = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
   const [updating, setUpdating]     = useState({});
+  const [editCard, setEditCard]     = useState(null);   // booking being edited
+
+  const boardRef   = useRef(null);
+  const scrollTick = useRef(null);
 
   const { options: cfgOptions } = useConfig();
   const branches = ['All', ...cfgOptions.branches];
@@ -94,6 +99,7 @@ export default function KanbanBoard() {
   const handleDrop = async (e, targetStatus) => {
     e.preventDefault();
     setDropTarget(null);
+    stopAutoScroll();
     if (!draggedId) return;
     const booking = bookings.find(b => b.recordId === draggedId);
     if (!booking || booking.status === targetStatus) { setDraggedId(null); return; }
@@ -111,7 +117,28 @@ export default function KanbanBoard() {
     }
   };
 
-  const handleDragEnd = () => { setDraggedId(null); setDropTarget(null); };
+  const handleDragEnd = () => { setDraggedId(null); setDropTarget(null); stopAutoScroll(); };
+
+  // ── Auto-scroll the board horizontally when dragging near an edge ───────────
+  const stopAutoScroll = () => {
+    if (scrollTick.current) { clearInterval(scrollTick.current); scrollTick.current = null; }
+  };
+
+  const handleBoardDragOver = (e) => {
+    const el = boardRef.current;
+    if (!el || !draggedId) return;
+    const rect = el.getBoundingClientRect();
+    const EDGE = 90, SPEED = 18;
+    let dir = 0;
+    if (e.clientX > rect.right - EDGE)      dir = 1;
+    else if (e.clientX < rect.left + EDGE)  dir = -1;
+    if (dir === 0) { stopAutoScroll(); return; }
+    if (!scrollTick.current) {
+      scrollTick.current = setInterval(() => { el.scrollLeft += dir * SPEED; }, 16);
+    }
+  };
+
+  useEffect(() => () => stopAutoScroll(), []);  // cleanup on unmount
 
   // ── Quick status select ───────────────────────────────────────────────────
   const handleQuickStatus = async (bookingId, newStatus, oldStatus) => {
@@ -194,7 +221,7 @@ export default function KanbanBoard() {
         )}
 
         {/* ── Board ── */}
-        <div className="kanban-board">
+        <div className="kanban-board" ref={boardRef} onDragOver={handleBoardDragOver}>
           {columns.map(col => (
             <div
               key={col.status}
@@ -244,6 +271,14 @@ export default function KanbanBoard() {
                             {card.isHighPriority && <span className="card-flag prio"  title="High Priority"><FiStar size={10} /></span>}
                             {card.doNotCall      && <span className="card-flag dnc"   title="Do Not Call">DNC</span>}
                             {card.isRescheduled  && <span className="card-flag rsch"  title="Rescheduled">RSCH</span>}
+                            <button
+                              className="card-edit-btn"
+                              title="Edit booking"
+                              onClick={e => { e.stopPropagation(); setEditCard(card); }}
+                              onDragStart={e => e.preventDefault()}
+                            >
+                              <FiEdit2 size={12} />
+                            </button>
                           </span>
                         </div>
 
@@ -301,6 +336,17 @@ export default function KanbanBoard() {
         </div>
 
       </div>
+
+      {editCard && (
+        <BookingEditModal
+          booking={editCard}
+          onClose={() => setEditCard(null)}
+          onSaved={(updated) => {
+            setBookings(prev => prev.map(b => b.recordId === updated.recordId ? { ...b, ...updated } : b));
+            setEditCard(null);
+          }}
+        />
+      )}
     </div>
   );
 }

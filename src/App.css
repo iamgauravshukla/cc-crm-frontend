@@ -4957,6 +4957,46 @@ body.sidebar-collapsed .main-content {
 [data-theme="dark"] .val-cancel   { background: rgba(252,165,165,0.15); color: #fca5a5; }
 [data-theme="dark"] .val-underage { background: rgba(251,191,36,0.15);  color: #fbbf24; }
 
+/* Inline checkbox toggle (Create Booking: OTS / With Companion) */
+.cb-inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+  user-select: none;
+}
+.cb-inline-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #579bfc;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Tri-state status dropdowns (Underage Status / Double Booking Status) */
+.val-status-select {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  min-width: 96px;
+  text-align: center;
+}
+.val-status-select:disabled { opacity: 0.5; cursor: wait; }
+.val-status-select.val-approved { background: rgba(16,185,129,0.12); color: #047857; border-color: rgba(16,185,129,0.35); }
+.val-status-select.val-pending  { background: rgba(245,158,11,0.12); color: #b45309; border-color: rgba(245,158,11,0.35); }
+.val-status-select.val-rejected { background: rgba(239,68,68,0.12);  color: #dc2626; border-color: rgba(239,68,68,0.35); }
+
+[data-theme="dark"] .val-status-select.val-approved { background: rgba(52,211,153,0.15); color: #6ee7b7; border-color: rgba(52,211,153,0.4); }
+[data-theme="dark"] .val-status-select.val-pending  { background: rgba(251,191,36,0.15); color: #fbbf24; border-color: rgba(251,191,36,0.4); }
+[data-theme="dark"] .val-status-select.val-rejected { background: rgba(252,165,165,0.15); color: #fca5a5; border-color: rgba(252,165,165,0.4); }
+[data-theme="dark"] .val-status-select option { background: #1c1f3b; color: #e5e7eb; }
+
 
 /* Multi-select filter hints */
 .qf-multi-hint {

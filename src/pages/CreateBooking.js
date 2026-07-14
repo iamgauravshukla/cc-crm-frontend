@@ -43,6 +43,8 @@ function CreateBooking() {
     adInteracted: '',
     remarks: '',
     followUpDate: '',
+    isOts: false,
+    isCompanion: false,
   });
 
   // Get current user from localStorage and auto-fill agent field if user is an agent
@@ -65,10 +67,10 @@ function CreateBooking() {
   const agents          = cfgOptions.agents;
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -370,8 +372,12 @@ function CreateBooking() {
                 <div className="section-header">
                   <FiUsers className="section-icon" />
                   <h3>Companion Information</h3>
-                  <span className="optional-badge">Optional</span>
+                  <label className="cb-inline-toggle">
+                    <input type="checkbox" name="isCompanion" checked={formData.isCompanion} onChange={handleChange} />
+                    <span>With Companion</span>
+                  </label>
                 </div>
+                {formData.isCompanion && (
                 <div className="form-grid">
                   <div className="form-group">
                     <label>Companion First Name</label>
@@ -448,6 +454,7 @@ function CreateBooking() {
                     </select>
                   </div>
                 </div>
+                )}
               </div>
 
               {/* Ad Details Section */}
@@ -505,6 +512,13 @@ function CreateBooking() {
                     onChange={handleChange}
                   />
                   <small className="form-hint">Set a date to follow up with this customer.</small>
+                </div>
+                <div className="form-group full-width">
+                  <label className="cb-inline-toggle">
+                    <input type="checkbox" name="isOts" checked={formData.isOts} onChange={handleChange} />
+                    <span>OTS (On-The-Spot booking)</span>
+                  </label>
+                  <small className="form-hint">Tick if the client booked and arrived on the same day.</small>
                 </div>
               </div>
 

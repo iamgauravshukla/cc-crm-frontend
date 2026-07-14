@@ -258,6 +258,7 @@ function OldBookings() {
       key: 'appointmentDate', fieldLabel: 'Appointment Date', type: 'datepreset',
       options: [
         { value: 'today',     label: 'Today' },
+        { value: 'yesterday', label: 'Yesterday' },
         { value: 'tomorrow',  label: 'Tomorrow' },
         { value: 'thisWeek',  label: 'This Week' },
         { value: 'next7',     label: 'Next 7 Days' },
@@ -581,7 +582,19 @@ function OldBookings() {
     setUpdateSuccess('');
 
     try {
-      await updateBooking(editFormData.rowNumber, editFormData);
+      // Guard: only send totalPrice when the admin actually changed it, so unrelated
+      // edits can never overwrite the stored price (#13). Blank/invalid → omit entirely.
+      const payload = { ...editFormData };
+      const origPrice = Number(editingBooking?.totalPrice);
+      const formPrice = (editFormData.totalPrice === '' || editFormData.totalPrice == null)
+        ? NaN : Number(editFormData.totalPrice);
+      if (Number.isNaN(formPrice) || formPrice === origPrice) {
+        delete payload.totalPrice;
+      } else {
+        payload.totalPrice = formPrice;
+      }
+
+      await updateBooking(editFormData.rowNumber, payload);
 
       setUpdateSuccess('Booking updated successfully!');
       setTimeout(() => {
@@ -603,24 +616,25 @@ function OldBookings() {
     setUpdateSuccess('');
   };
 
-  // Toggle cancel_validation or underage_validation for a single booking row (Admin only)
-  const handleValidationToggle = useCallback(async (booking, field) => {
+  // Set tri-state Underage Status / Double Booking Status for a single row (Admin only)
+  // field is 'underageStatus' or 'dbStatus'; value ∈ 'Approved' | 'Pending' | 'Rejected'
+  const handleStatusChange = useCallback(async (booking, field, value) => {
     const key = `${booking.rowNumber}-${field}`;
+    const prevVal = booking[field];
     setValidationUpdating(prev => ({ ...prev, [key]: true }));
-
-    const newVal = !booking[field];
-    const body = {
-      cancelValidation:   field === 'cancelValidation'   ? newVal : booking.cancelValidation,
-      underageValidation: field === 'underageValidation' ? newVal : booking.underageValidation,
-    };
+    // Optimistic update
+    setBookings(prev => prev.map(b =>
+      b.rowNumber === booking.rowNumber ? { ...b, [field]: value } : b
+    ));
 
     try {
-      await updateValidation(booking.rowNumber, body);
-      setBookings(prev => prev.map(b =>
-        b.rowNumber === booking.rowNumber ? { ...b, [field]: newVal } : b
-      ));
+      await updateValidation(booking.rowNumber, { [field]: value });
     } catch (err) {
-      console.error('Validation toggle error:', err.response?.data?.error || err.message);
+      console.error('Status change error:', err.response?.data?.error || err.message);
+      // Revert on failure
+      setBookings(prev => prev.map(b =>
+        b.rowNumber === booking.rowNumber ? { ...b, [field]: prevVal } : b
+      ));
     } finally {
       setValidationUpdating(prev => { const n = { ...prev }; delete n[key]; return n; });
     }
@@ -968,8 +982,8 @@ function OldBookings() {
                       <th>Companion Gender</th>
                       <th>Companion Freebie</th>
                       <th>Companion Area</th>
-                      {user?.role === 'Admin' && <th className="validation-col-header">Cancel Validation</th>}
-                      {user?.role === 'Admin' && <th className="validation-col-header">Underage Validation</th>}
+                      {user?.role === 'Admin' && <th className="validation-col-header">Underage Status</th>}
+                      {user?.role === 'Admin' && <th className="validation-col-header">Double Booking Status</th>}
                       {user?.role === 'Admin' && <th className="validation-col-header">Delete</th>}
                     </tr>
                   </thead>
@@ -1061,28 +1075,32 @@ function OldBookings() {
                         <td>{booking.companionArea || '-'}</td>
                         {user?.role === 'Admin' && (
                           <td className="validation-cell">
-                            <label className="validation-checkbox-wrap" title="Cancel Validation: exclude this arrival from agent stats">
-                              <input
-                                type="checkbox"
-                                checked={!!booking.cancelValidation}
-                                disabled={!!validationUpdating[`${booking.rowNumber}-cancelValidation`]}
-                                onChange={() => handleValidationToggle(booking, 'cancelValidation')}
-                              />
-                              {booking.cancelValidation && <span className="val-badge val-cancel">Excluded</span>}
-                            </label>
+                            <select
+                              className={`val-status-select val-${(booking.underageStatus || 'Approved').toLowerCase()}`}
+                              value={booking.underageStatus || 'Approved'}
+                              disabled={!!validationUpdating[`${booking.rowNumber}-underageStatus`]}
+                              onChange={e => handleStatusChange(booking, 'underageStatus', e.target.value)}
+                              title="Underage Status — Pending or Rejected excludes this booking from reports"
+                            >
+                              <option value="Approved">✓ Approved</option>
+                              <option value="Pending">⏳ Pending</option>
+                              <option value="Rejected">✕ Rejected</option>
+                            </select>
                           </td>
                         )}
                         {user?.role === 'Admin' && (
                           <td className="validation-cell">
-                            <label className="validation-checkbox-wrap" title="Underage Validation: exclude this arrival from agent stats">
-                              <input
-                                type="checkbox"
-                                checked={!!booking.underageValidation}
-                                disabled={!!validationUpdating[`${booking.rowNumber}-underageValidation`]}
-                                onChange={() => handleValidationToggle(booking, 'underageValidation')}
-                              />
-                              {booking.underageValidation && <span className="val-badge val-underage">Excluded</span>}
-                            </label>
+                            <select
+                              className={`val-status-select val-${(booking.dbStatus || 'Approved').toLowerCase()}`}
+                              value={booking.dbStatus || 'Approved'}
+                              disabled={!!validationUpdating[`${booking.rowNumber}-dbStatus`]}
+                              onChange={e => handleStatusChange(booking, 'dbStatus', e.target.value)}
+                              title="Double Booking Status — Pending or Rejected excludes this booking from reports"
+                            >
+                              <option value="Approved">✓ Approved</option>
+                              <option value="Pending">⏳ Pending</option>
+                              <option value="Rejected">✕ Rejected</option>
+                            </select>
                           </td>
                         )}
                         {user?.role === 'Admin' && (

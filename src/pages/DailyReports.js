@@ -255,6 +255,7 @@ const DailyReports = () => {
   const otsData      = prepareBranchData(reports?.otsBookings?.byBranch);
   const overallData  = prepareBranchData(reports?.overallBookings?.byBranch);
   const tomorrowData = prepareBranchData(reports?.bookedTomorrow?.byBranch);
+  const overallTomData = prepareBranchData(reports?.overallBookingsTomorrow?.byBranch);
   const next7Data    = prepareBranchData(reports?.bookedNext7Days?.byBranch);
   const cancelData   = prepareBranchData(reports?.cancellations?.byBranch);
   const arrivalsData = prepareBranchData(reports?.arrivalsToday?.byBranch);
@@ -440,8 +441,8 @@ const DailyReports = () => {
         <div className="dr-section">
           <div className="dr-row">
             <Snap id="chart-overall-tomorrow" className="dr-chart-wrap">
-              {tomorrowData.length > 0
-                ? <ReactApexChart type="bar" height={320} options={barOptions(tomorrowData,'Overall Bookings Tomorrow','overall-tomorrow',getTomorrowSummary)} series={barSeries(tomorrowData,'Tomorrow')} />
+              {overallTomData.length > 0
+                ? <ReactApexChart type="bar" height={320} options={barOptions(overallTomData,'Overall Bookings Tomorrow','overall-tomorrow',getTomorrowSummary)} series={barSeries(overallTomData,'Tomorrow')} />
                 : <NoData msg="No bookings tomorrow" />}
             </Snap>
             <BigNum id="big-overall-tomorrow" value={overallTomTotal} label="Overall Bookings Tomorrow" color="#06b6d4"
