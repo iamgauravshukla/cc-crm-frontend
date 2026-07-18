@@ -170,6 +170,7 @@ export default function CCBookingReport() {
   const {
     totalSchedulesToday, totalArrivalsToday, totalSchedulesTomorrow,
     paymentModesTomorrow, paymentModeRevenueTomorrow, totalSchedulesNext7, totalOTS,
+    cancellationsToday = { byBranch: {}, total: 0 },
     performance
   } = data;
 
@@ -179,6 +180,8 @@ export default function CCBookingReport() {
   const tomorrowChart  = barSeries(totalSchedulesTomorrow.byBranch, 'Tomorrow');
   const next7Chart     = barSeries(totalSchedulesNext7.byBranch,    'Next 7 Days');
   const otsChart       = barSeries(totalOTS.byBranch,               'OTS');
+  const cancelChart    = barSeries(cancellationsToday.byBranch,     'Cancellations');
+  const cancelColors   = cancelChart.categories.map((_, i) => ['#ef4444','#f87171','#dc2626','#fca5a5','#b91c1c'][i % 5]);
 
   const payModes = ['Cash', 'Debit', 'Credit'];
   const payModeLabels = ['Cash', 'Debit', 'Credit'];
@@ -490,6 +493,25 @@ export default function CCBookingReport() {
             </Snap>
           </div>
           <DrillDownPanel chartKey="ots" />
+        </div>
+
+        {/* ── Row 7: Cancellation per Branch ────────────────────────── */}
+        <div className="ccr-section">
+          <div className="ccr-row">
+            <Snap id="chart-cancellations" className="ccr-chart-wrap">
+              <ReactApexChart
+                type="bar" height={320}
+                options={barOptions(cancelChart.categories, cancelColors, 'Cancellation per Branch', 'cancellations', 'cancellations')}
+                series={cancelChart.series}
+              />
+            </Snap>
+            <Snap id="big-cancellations" className="ccr-bignum-card ccr-ots-total">
+              <div className="ccr-ots-label">Cancellations Today</div>
+              <div className="ccr-ots-num" style={{ color: '#ef4444' }}>{formatNum(cancellationsToday.total)}</div>
+              <div className="ccr-ots-sub">Status = Cancelled · Booked on = Today</div>
+            </Snap>
+          </div>
+          <DrillDownPanel chartKey="cancellations" />
         </div>
 
         {/* Snapshot floating bar */}
