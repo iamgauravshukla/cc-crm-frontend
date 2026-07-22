@@ -4957,6 +4957,15 @@ body.sidebar-collapsed .main-content {
 [data-theme="dark"] .val-cancel   { background: rgba(252,165,165,0.15); color: #fca5a5; }
 [data-theme="dark"] .val-underage { background: rgba(251,191,36,0.15);  color: #fbbf24; }
 
+/* Editable OTS / With-Companion checkbox columns in Master Bookings */
+.flag-checkbox {
+  width: 17px;
+  height: 17px;
+  accent-color: #579bfc;
+  cursor: pointer;
+}
+.flag-checkbox:disabled { opacity: 0.5; cursor: wait; }
+
 /* Inline checkbox toggle (Create Booking: OTS / With Companion) */
 .cb-inline-toggle {
   display: inline-flex;

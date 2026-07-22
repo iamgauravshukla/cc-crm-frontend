@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera, FiTrash2, FiAlertTriangle, FiDownload, FiBookmark, FiClock, FiCheckCircle, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import html2canvas from 'html2canvas';
-import { getOldBookings, deleteBooking, exportBookings, bulkUpdateStatus, getSavedViews, createSavedView, deleteSavedView, getActivityLog, updateBooking, updateValidation } from '../services/api';
+import { getOldBookings, deleteBooking, exportBookings, bulkUpdateStatus, getSavedViews, createSavedView, deleteSavedView, getActivityLog, updateBooking, updateValidation, updateBookingFlags } from '../services/api';
 import { useConfig } from '../hooks/useConfig';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
@@ -640,6 +640,27 @@ function OldBookings() {
     }
   }, []);
 
+  // Toggle the OTS / With-Companion identifier columns for a single row
+  // field is 'isOts' or 'isCompanion'
+  const handleFlagToggle = useCallback(async (booking, field) => {
+    const key = `${booking.rowNumber}-${field}`;
+    const newVal = !booking[field];
+    setValidationUpdating(prev => ({ ...prev, [key]: true }));
+    setBookings(prev => prev.map(b =>
+      b.rowNumber === booking.rowNumber ? { ...b, [field]: newVal } : b
+    ));
+    try {
+      await updateBookingFlags(booking.rowNumber, { [field]: newVal });
+    } catch (err) {
+      console.error('Flag toggle error:', err.response?.data?.error || err.message);
+      setBookings(prev => prev.map(b =>
+        b.rowNumber === booking.rowNumber ? { ...b, [field]: !newVal } : b
+      ));
+    } finally {
+      setValidationUpdating(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+  }, []);
+
   const handleCardSnapshot = useCallback(async (booking, index) => {
     const el = cardRefs.current[index];
     if (!el) return;
@@ -982,6 +1003,8 @@ function OldBookings() {
                       <th>Companion Gender</th>
                       <th>Companion Freebie</th>
                       <th>Companion Area</th>
+                      <th className="validation-col-header">OTS</th>
+                      <th className="validation-col-header">With Companion</th>
                       {user?.role === 'Admin' && <th className="validation-col-header">Underage Status</th>}
                       {user?.role === 'Admin' && <th className="validation-col-header">Double Booking Status</th>}
                       {user?.role === 'Admin' && <th className="validation-col-header">Delete</th>}
@@ -1073,6 +1096,26 @@ function OldBookings() {
                         <td>{booking.companionGender || '-'}</td>
                         <td>{booking.companionFreebie || '-'}</td>
                         <td>{booking.companionArea || '-'}</td>
+                        <td className="validation-cell">
+                          <input
+                            type="checkbox"
+                            className="flag-checkbox"
+                            checked={!!booking.isOts}
+                            disabled={!!validationUpdating[`${booking.rowNumber}-isOts`]}
+                            onChange={() => handleFlagToggle(booking, 'isOts')}
+                            title="OTS (On-The-Spot)"
+                          />
+                        </td>
+                        <td className="validation-cell">
+                          <input
+                            type="checkbox"
+                            className="flag-checkbox"
+                            checked={!!booking.isCompanion}
+                            disabled={!!validationUpdating[`${booking.rowNumber}-isCompanion`]}
+                            onChange={() => handleFlagToggle(booking, 'isCompanion')}
+                            title="With Companion"
+                          />
+                        </td>
                         {user?.role === 'Admin' && (
                           <td className="validation-cell">
                             <select
@@ -1571,7 +1614,7 @@ function OldBookings() {
                         onChange={handleEditFormChange}
                         required
                         min="0"
-                        step="0.01"
+                        step="any"
                       />
                     </div>
                   )}

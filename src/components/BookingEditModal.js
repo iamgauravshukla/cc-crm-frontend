@@ -199,7 +199,7 @@ function BookingEditModal({ booking, onClose, onSaved }) {
               {user?.role !== 'Agent' && (
                 <div className="form-group">
                   <label>Total Price</label>
-                  <input type="number" name="totalPrice" value={form.totalPrice} onChange={change} min="0" step="0.01" />
+                  <input type="number" name="totalPrice" value={form.totalPrice} onChange={change} min="0" step="any" />
                 </div>
               )}
               <div className="form-group">

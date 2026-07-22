@@ -361,7 +361,7 @@ function CreateBooking() {
                       placeholder="0.00"
                       required
                       min="0"
-                      step="0.01"
+                      step="any"
                     />
                   </div>
                 </div>

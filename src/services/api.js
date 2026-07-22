@@ -56,6 +56,7 @@ export const getActivityLog     = (bookingId)     => api.get(`/bookings/${bookin
 export const getKanbanBookings  = (params)        => api.get('/bookings/kanban', { params });
 export const updateBooking      = (id, data)      => api.put(`/bookings/${id}`, data);
 export const updateValidation   = (id, data)      => api.patch(`/bookings/${id}/validation`, data);
+export const updateBookingFlags = (id, data)      => api.patch(`/bookings/${id}/flags`, data);
 export const importBookings     = (formData)      => api.post('/bookings/import', formData, {
   headers: { 'Content-Type': 'multipart/form-data' },
   timeout: 5 * 60 * 1000, // large files can take a few minutes
