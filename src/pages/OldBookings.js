@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera, FiTrash2, FiAlertTriangle, FiDownload, FiBookmark, FiClock, FiCheckCircle, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import html2canvas from 'html2canvas';
-import { getOldBookings, deleteBooking, exportBookings, bulkUpdateStatus, getSavedViews, createSavedView, deleteSavedView, getActivityLog, updateBooking, updateValidation, updateBookingFlags } from '../services/api';
+import { getOldBookings, deleteBooking, exportBookings, bulkUpdateStatus, bulkDeleteBookings, getSavedViews, createSavedView, deleteSavedView, getActivityLog, updateBooking, updateValidation, updateBookingFlags } from '../services/api';
 import { useConfig } from '../hooks/useConfig';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
@@ -404,6 +404,22 @@ function OldBookings() {
       fetchBookings();
     } catch (err) {
       console.error('Bulk update failed:', err.response?.data?.error || err.message);
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} selected booking(s)? This cannot be undone.`)) return;
+    setBulkLoading(true);
+    try {
+      await bulkDeleteBookings([...selectedIds]);
+      setSelectedIds(new Set());
+      fetchBookings();
+    } catch (err) {
+      console.error('Bulk delete failed:', err.response?.data?.error || err.message);
+      setError(err.response?.data?.error || 'Failed to delete selected bookings');
     } finally {
       setBulkLoading(false);
     }
@@ -929,6 +945,16 @@ function OldBookings() {
             >
               {bulkLoading ? 'Updating…' : 'Apply'}
             </button>
+            {user?.role === 'Admin' && (
+              <button
+                className="btn btn-danger btn-sm"
+                onClick={handleBulkDelete}
+                disabled={bulkLoading}
+              >
+                <FiTrash2 size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                {bulkLoading ? 'Deleting…' : `Delete ${selectedIds.size}`}
+              </button>
+            )}
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => setSelectedIds(new Set())}

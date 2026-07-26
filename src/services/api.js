@@ -50,6 +50,7 @@ export const getOldBookings     = (params)        => api.get('/bookings/old', { 
 export const getBookingById     = (id)            => api.get(`/bookings/${id}`);
 export const deleteBooking      = (rowNumber)     => api.delete(`/bookings/${rowNumber}`);
 export const bulkUpdateStatus   = (data)          => api.post('/bookings/bulk-status', data);
+export const bulkDeleteBookings = (recordIds)     => api.post('/bookings/bulk-delete', { recordIds });
 export const getCustomerHistory = (query)         => api.get('/bookings/customer', { params: { query } });
 export const exportBookings     = (params)        => api.get('/bookings/export', { params, responseType: 'blob' });
 export const getActivityLog     = (bookingId)     => api.get(`/bookings/${bookingId}/activity`);
