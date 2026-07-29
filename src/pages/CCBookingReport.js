@@ -7,6 +7,8 @@ import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import api, { getCCReportDrilldown } from '../services/api';
 import ScrollableTable from '../components/ScrollableTable';
+import ReportFilter, { filterToParams, EMPTY_FILTER } from '../components/ReportFilter';
+import { useConfig } from '../hooks/useConfig';
 import './CCBookingReport.css';
 
 const CHART_COLORS = [
@@ -33,13 +35,19 @@ export default function CCBookingReport() {
   const [drillDown, setDrillDown]   = useState(null);
   const bookingsCache = useRef({});
 
+  // Scope filter (Branch / Agent)
+  const [filter, setFilter] = useState(EMPTY_FILTER);
+  const { options: cfgOptions } = useConfig();
+
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
   const fetch = useCallback(async () => {
     setLoading(true); setError(null);
+    bookingsCache.current = {};   // filter changed → invalidate drill-down cache
+    setDrillDown(null);
     try {
-      const res = await api.get('/bookings/cc-report');
+      const res = await api.get('/bookings/cc-report', { params: filterToParams(filter) });
       setData(res.data.data);
       setRefreshAt(new Date());
     } catch (e) {
@@ -47,7 +55,7 @@ export default function CCBookingReport() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [filter]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -89,7 +97,7 @@ export default function CCBookingReport() {
     try {
       let all = bookingsCache.current[chartKey];
       if (!all) {
-        const res = await getCCReportDrilldown(section);
+        const res = await getCCReportDrilldown(section, filterToParams(filter));
         all = res.data?.bookings || [];
         bookingsCache.current[chartKey] = all;
       }
@@ -186,10 +194,8 @@ export default function CCBookingReport() {
   const payModes = ['Cash', 'Debit', 'Credit'];
   const payModeLabels = ['Cash', 'Debit', 'Credit'];
   const payChart = {
-    series: [
-      { name: 'Bookings', data: payModes.map(m => paymentModesTomorrow[m] || 0) },
-      { name: 'Revenue (÷1000)', data: payModes.map(m => Math.round((paymentModeRevenueTomorrow?.[m] || 0) / 1000)) }
-    ],
+    // Only the payment-method booking counts (no revenue series)
+    series: [{ name: 'Bookings', data: payModes.map(m => paymentModesTomorrow[m] || 0) }],
     categories: payModeLabels,
     colors: ['#10b981', '#3b82f6', '#8b5cf6'],
   };
@@ -291,6 +297,12 @@ export default function CCBookingReport() {
           </div>
           <div className="ccr-header-actions">
             <span className="ccr-refresh-label">Updated {refreshAt.toLocaleTimeString()}</span>
+            <ReportFilter
+              branches={cfgOptions.branches}
+              agents={cfgOptions.agents}
+              value={filter}
+              onApply={setFilter}
+            />
             <button
               className={`ccr-btn${snapshotMode ? ' active' : ''}`}
               onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }}
@@ -420,32 +432,20 @@ export default function CCBookingReport() {
               <ReactApexChart
                 type="bar" height={300}
                 options={{
-                  ...baseChart('Modes of Payment For Tomorrow (count · ₱ revenue ÷ 1k)'),
-                  chart: { ...baseChart('').chart, type: 'bar', stacked: false,
+                  ...baseChart('Modes of Payment For Tomorrow'),
+                  chart: { ...baseChart('').chart, type: 'bar',
                     events: { dataPointSelection: (_ev, _ctx, config) => {
-                      if (config.seriesIndex === 0) {
-                        const val = payModeLabels[config.dataPointIndex];
-                        if (val) handleBarClick('payment', val, 'payment-tomorrow', 'payMode');
-                      }
+                      const val = payModeLabels[config.dataPointIndex];
+                      if (val) handleBarClick('payment', val, 'payment-tomorrow', 'payMode');
                     }}
                   },
-                  plotOptions: { bar: { borderRadius: 5, columnWidth: '50%', dataLabels: { position: 'top' } } },
-                  colors: ['#10b981', '#93c5fd'],
-                  legend: { show: true, labels: { colors: isDark ? '#94a3b8' : '#64748b' } },
+                  plotOptions: { bar: { borderRadius: 5, distributed: true, columnWidth: '50%', dataLabels: { position: 'top' } } },
+                  colors: payChart.colors,
+                  legend: { show: false },
                   xaxis: { ...baseChart('').xaxis, categories: payModeLabels },
-                  dataLabels: { enabled: true, style: { fontSize: '11px', fontWeight: 600, colors: [isDark ? '#e2e8f0' : '#1e293b'] }, offsetY: -18 },
-                  yaxis: [
-                    { title: { text: 'Bookings', style: { color: isDark ? '#cbd5e1' : '#64748b' } }, labels: { style: { colors: isDark ? '#94a3b8' : '#64748b' } } },
-                    { opposite: true, title: { text: '₱ Revenue (÷1k)', style: { color: isDark ? '#cbd5e1' : '#64748b' } },
-                      labels: { formatter: v => `₱${(v ?? 0)}k`, style: { colors: isDark ? '#94a3b8' : '#64748b' } },
-                      min: 0 }
-                  ],
-                  tooltip: { shared: true, intersect: false,
-                    y: {
-                      formatter: (v, { seriesIndex }) =>
-                        seriesIndex === 0 ? `${v ?? 0} bookings` : `₱${((v ?? 0) * 1000).toLocaleString()}`
-                    }
-                  }
+                  dataLabels: { enabled: true, style: { fontSize: '12px', fontWeight: 700, colors: [isDark ? '#e2e8f0' : '#1e293b'] }, offsetY: -18 },
+                  yaxis: { title: { text: 'Bookings', style: { color: isDark ? '#cbd5e1' : '#64748b' } }, labels: { style: { colors: isDark ? '#94a3b8' : '#64748b' } } },
+                  tooltip: { y: { formatter: v => `${v ?? 0} bookings` } }
                 }}
                 series={payChart.series}
               />

@@ -7,6 +7,8 @@ import html2canvas from 'html2canvas';
 import { FiRefreshCw, FiAlertCircle, FiX, FiMaximize2, FiPhone, FiMail, FiCamera, FiDownload, FiChevronDown } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import ScrollableTable from '../components/ScrollableTable';
+import ReportFilter, { filterToParams, EMPTY_FILTER } from '../components/ReportFilter';
+import { useConfig } from '../hooks/useConfig';
 import './DailyReports.css';
 
 const BRANCH_COLORS = [
@@ -37,6 +39,10 @@ const DailyReports = () => {
   const [downloading, setDownloading]     = useState(false);
   const cardRefs = useRef({});
 
+  // Scope filter (Branch / Agent)
+  const [filter, setFilter] = useState(EMPTY_FILTER);
+  const { options: cfgOptions } = useConfig();
+
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -66,15 +72,17 @@ const DailyReports = () => {
   }, [selectedCards]);
 
   // ── Data fetching ─────────────────────────────────────────────────────────
-  const fetchDailyReports = async () => {
+  const fetchDailyReports = useCallback(async () => {
     try {
       setLoading(true); setError(null);
-      const res = await getDailyReports();
+      bookingsCache.current = {};   // filter changed → invalidate drill-down cache
+      setDrillDown(null);
+      const res = await getDailyReports(filterToParams(filter));
       if (res.data?.success) { setReports(res.data.reports); setRefreshAt(new Date()); }
       else setError('Failed to load daily reports');
     } catch (err) { setError(err.message || 'An error occurred'); }
     finally { setLoading(false); }
-  };
+  }, [filter]);
 
   useEffect(() => {
     fetchDailyReports();
@@ -86,7 +94,7 @@ const DailyReports = () => {
     };
     const mid = calcMid();
     return () => { clearInterval(auto); clearTimeout(mid); };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchDailyReports]);
 
   // ── Full-section modal ────────────────────────────────────────────────────
   const handleExpandSection = async (sectionName) => {
@@ -99,7 +107,7 @@ const DailyReports = () => {
         'tomorrow-summary': getTomorrowSummary,
       };
       const fn = apiMap[sectionName]; if (!fn) return;
-      const res = await fn();
+      const res = await fn(filterToParams(filter));
       setModalBookings(res.data?.bookings || []);
     } catch { setModalBookings([]); }
     finally { setModalLoading(false); }
@@ -115,7 +123,7 @@ const DailyReports = () => {
     try {
       let all = bookingsCache.current[chartKey];
       if (!all) {
-        const res = await apiFn();
+        const res = await apiFn(filterToParams(filter));
         all = res.data?.bookings || [];
         bookingsCache.current[chartKey] = all;
       }
@@ -285,6 +293,12 @@ const DailyReports = () => {
           </div>
           <div className="header-right">
             <span className="refresh-label">Updated {refreshAt.toLocaleTimeString()}</span>
+            <ReportFilter
+              branches={cfgOptions.branches}
+              agents={cfgOptions.agents}
+              value={filter}
+              onApply={setFilter}
+            />
             <button className={`btn-icon-primary${snapshotMode ? ' active' : ''}`}
               onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }} title="Snapshot mode">
               <FiCamera size={16} />

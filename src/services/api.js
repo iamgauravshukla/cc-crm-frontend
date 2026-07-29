@@ -73,16 +73,16 @@ export const getAdPerformance = (params) => api.get('/analytics/ad-performance',
 export const getSalesReport = (params = {}) => api.get('/analytics/sales-report', { params });
 
 // Daily Reports API
-export const getDailyReports = () => api.get('/bookings/daily-reports');
-export const getOTSBookings = () => api.get('/bookings/daily-reports/ots');
-export const getOverallBookings = () => api.get('/bookings/daily-reports/overall');
-export const getTomorrowBookings = () => api.get('/bookings/daily-reports/tomorrow');
-export const getNext7DaysBookings = () => api.get('/bookings/daily-reports/next7days');
-export const getCancellations = () => api.get('/bookings/daily-reports/cancellations');
-export const getArrivalsToday = () => api.get('/bookings/daily-reports/arrivals-today');
-export const getTomorrowSummary = () => api.get('/bookings/daily-reports/tomorrow-summary');
-export const getCCReport = () => api.get('/bookings/cc-report');
-export const getCCReportDrilldown = (section) => api.get('/bookings/cc-report/drilldown', { params: { section } });
+export const getDailyReports = (params) => api.get('/bookings/daily-reports', { params });
+export const getOTSBookings = (params) => api.get('/bookings/daily-reports/ots', { params });
+export const getOverallBookings = (params) => api.get('/bookings/daily-reports/overall', { params });
+export const getTomorrowBookings = (params) => api.get('/bookings/daily-reports/tomorrow', { params });
+export const getNext7DaysBookings = (params) => api.get('/bookings/daily-reports/next7days', { params });
+export const getCancellations = (params) => api.get('/bookings/daily-reports/cancellations', { params });
+export const getArrivalsToday = (params) => api.get('/bookings/daily-reports/arrivals-today', { params });
+export const getTomorrowSummary = (params) => api.get('/bookings/daily-reports/tomorrow-summary', { params });
+export const getCCReport = (params) => api.get('/bookings/cc-report', { params });
+export const getCCReportDrilldown = (section, params) => api.get('/bookings/cc-report/drilldown', { params: { section, ...params } });
 
 // Website Leads APIs (GET — protected, for CRM)
 export const getCallLeads = (params) => api.get('/leads/call', { params });
