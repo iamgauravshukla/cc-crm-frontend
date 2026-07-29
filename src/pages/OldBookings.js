@@ -1087,7 +1087,7 @@ function OldBookings() {
                                   {new Date(booking.bookingDate + 'T00:00:00').toLocaleDateString('en-PH', {month:'short',day:'numeric',year:'numeric'})}
                                 </div>
                                 <div style={{fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px'}}>
-                                  {booking.bookingTime || ''}
+                                  {booking.bookingTimeDisplay || booking.bookingTime || ''}
                                 </div>
                               </>
                             ) : '-'}

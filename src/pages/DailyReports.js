@@ -7,7 +7,7 @@ import html2canvas from 'html2canvas';
 import { FiRefreshCw, FiAlertCircle, FiX, FiMaximize2, FiPhone, FiMail, FiCamera, FiDownload, FiChevronDown } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import ScrollableTable from '../components/ScrollableTable';
-import ReportFilter, { filterToParams, EMPTY_FILTER } from '../components/ReportFilter';
+import WidgetFilter, { widgetFiltersToParam, singleFilterToParam, EMPTY_WFILTER } from '../components/WidgetFilter';
 import { useConfig } from '../hooks/useConfig';
 import './DailyReports.css';
 
@@ -39,9 +39,11 @@ const DailyReports = () => {
   const [downloading, setDownloading]     = useState(false);
   const cardRefs = useRef({});
 
-  // Scope filter (Branch / Agent)
-  const [filter, setFilter] = useState(EMPTY_FILTER);
+  // Per-widget refine filters — keyed by chartKey (ots, overall, arrivals-today, …)
+  const [widgetFilters, setWidgetFilters] = useState({});
   const { options: cfgOptions } = useConfig();
+  const filterOptions = { branches: cfgOptions.branches, statuses: cfgOptions.statuses, agents: cfgOptions.agents };
+  const setWidgetFilter = useCallback((key, val) => setWidgetFilters(prev => ({ ...prev, [key]: val })), []);
 
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -77,12 +79,12 @@ const DailyReports = () => {
       setLoading(true); setError(null);
       bookingsCache.current = {};   // filter changed → invalidate drill-down cache
       setDrillDown(null);
-      const res = await getDailyReports(filterToParams(filter));
+      const res = await getDailyReports(widgetFiltersToParam(widgetFilters));
       if (res.data?.success) { setReports(res.data.reports); setRefreshAt(new Date()); }
       else setError('Failed to load daily reports');
     } catch (err) { setError(err.message || 'An error occurred'); }
     finally { setLoading(false); }
-  }, [filter]);
+  }, [widgetFilters]);
 
   useEffect(() => {
     fetchDailyReports();
@@ -107,7 +109,9 @@ const DailyReports = () => {
         'tomorrow-summary': getTomorrowSummary,
       };
       const fn = apiMap[sectionName]; if (!fn) return;
-      const res = await fn(filterToParams(filter));
+      // The tomorrow-summary modal maps to the 'overall-tomorrow' widget; all others share the name.
+      const wkey = sectionName === 'tomorrow-summary' ? 'overall-tomorrow' : sectionName;
+      const res = await fn(singleFilterToParam(widgetFilters[wkey]));
       setModalBookings(res.data?.bookings || []);
     } catch { setModalBookings([]); }
     finally { setModalLoading(false); }
@@ -123,7 +127,7 @@ const DailyReports = () => {
     try {
       let all = bookingsCache.current[chartKey];
       if (!all) {
-        const res = await apiFn(filterToParams(filter));
+        const res = await apiFn(singleFilterToParam(widgetFilters[chartKey]));
         all = res.data?.bookings || [];
         bookingsCache.current[chartKey] = all;
       }
@@ -293,12 +297,6 @@ const DailyReports = () => {
           </div>
           <div className="header-right">
             <span className="refresh-label">Updated {refreshAt.toLocaleTimeString()}</span>
-            <ReportFilter
-              branches={cfgOptions.branches}
-              agents={cfgOptions.agents}
-              value={filter}
-              onApply={setFilter}
-            />
             <button className={`btn-icon-primary${snapshotMode ? ' active' : ''}`}
               onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }} title="Snapshot mode">
               <FiCamera size={16} />
@@ -371,6 +369,7 @@ const DailyReports = () => {
         <div className="dr-section">
           <div className="dr-row">
             <Snap id="chart-ots" className="dr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="OTS" value={widgetFilters['ots'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('ots', v)} /></div>
               {otsData.length > 0
                 ? <ReactApexChart type="bar" height={320} options={barOptions(otsData,'OTS per Branch','ots',getOTSBookings)} series={barSeries(otsData,'OTS')} />
                 : <NoData msg="No OTS bookings today" />}
@@ -385,6 +384,7 @@ const DailyReports = () => {
         <div className="dr-section">
           <div className="dr-row">
             <Snap id="chart-overall" className="dr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Overall" value={widgetFilters['overall'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('overall', v)} /></div>
               {overallData.length > 0
                 ? <ReactApexChart type="bar" height={320} options={barOptions(overallData,'OVERALL per Branch','overall',getOverallBookings)} series={barSeries(overallData,'Overall')} />
                 : <NoData msg="No overall bookings" />}
@@ -399,6 +399,7 @@ const DailyReports = () => {
         <div className="dr-section">
           <div className="dr-row">
             <Snap id="chart-arrivals" className="dr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Arrivals Today" value={widgetFilters['arrivals-today'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('arrivals-today', v)} /></div>
               {arrivalsData.length > 0
                 ? <ReactApexChart type="bar" height={320} options={barOptions(arrivalsData,'Arrivals Today per Branch','arrivals-today',getArrivalsToday)} series={barSeries(arrivalsData,'Arrivals')} />
                 : <NoData msg="No arrivals today" />}
@@ -413,6 +414,7 @@ const DailyReports = () => {
         <div className="dr-section">
           <div className="dr-row">
             <Snap id="chart-tomorrow" className="dr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Booked Tomorrow" value={widgetFilters['tomorrow'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('tomorrow', v)} /></div>
               {tomorrowData.length > 0
                 ? <ReactApexChart type="bar" height={320} options={barOptions(tomorrowData,'Booked Tomorrow per Branch','tomorrow',getTomorrowBookings)} series={barSeries(tomorrowData,'Tomorrow')} />
                 : <NoData msg="No appointments tomorrow" />}
@@ -427,6 +429,7 @@ const DailyReports = () => {
         <div className="dr-section">
           <div className="dr-row">
             <Snap id="chart-next7" className="dr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Next 7 Days" value={widgetFilters['next7days'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('next7days', v)} /></div>
               {next7Data.length > 0
                 ? <ReactApexChart type="bar" height={320} options={barOptions(next7Data,'Booked Next 7 Days per Branch','next7days',getNext7DaysBookings)} series={barSeries(next7Data,'Next 7 Days')} />
                 : <NoData msg="No bookings in next 7 days" />}
@@ -441,6 +444,7 @@ const DailyReports = () => {
         <div className="dr-section">
           <div className="dr-row">
             <Snap id="chart-cancellations" className="dr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Cancellations" value={widgetFilters['cancellations'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('cancellations', v)} /></div>
               {cancelData.length > 0
                 ? <ReactApexChart type="bar" height={320} options={barOptions(cancelData,'Cancellations per Branch','cancellations',getCancellations)} series={barSeries(cancelData,'Cancellations')} />
                 : <NoData msg="No cancellations today" />}
@@ -455,6 +459,7 @@ const DailyReports = () => {
         <div className="dr-section">
           <div className="dr-row">
             <Snap id="chart-overall-tomorrow" className="dr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Overall Tomorrow" value={widgetFilters['overall-tomorrow'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('overall-tomorrow', v)} /></div>
               {overallTomData.length > 0
                 ? <ReactApexChart type="bar" height={320} options={barOptions(overallTomData,'Overall Bookings Tomorrow','overall-tomorrow',getTomorrowSummary)} series={barSeries(overallTomData,'Tomorrow')} />
                 : <NoData msg="No bookings tomorrow" />}

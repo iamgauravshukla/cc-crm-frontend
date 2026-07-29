@@ -7,7 +7,7 @@ import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import api, { getCCReportDrilldown } from '../services/api';
 import ScrollableTable from '../components/ScrollableTable';
-import ReportFilter, { filterToParams, EMPTY_FILTER } from '../components/ReportFilter';
+import WidgetFilter, { widgetFiltersToParam, singleFilterToParam, EMPTY_WFILTER } from '../components/WidgetFilter';
 import { useConfig } from '../hooks/useConfig';
 import './CCBookingReport.css';
 
@@ -35,19 +35,21 @@ export default function CCBookingReport() {
   const [drillDown, setDrillDown]   = useState(null);
   const bookingsCache = useRef({});
 
-  // Scope filter (Branch / Agent)
-  const [filter, setFilter] = useState(EMPTY_FILTER);
+  // Per-widget refine filters, keyed by chartKey (today, tomorrow, payment, next7, ots, arrivals, cancellations)
+  const [widgetFilters, setWidgetFilters] = useState({});
   const { options: cfgOptions } = useConfig();
+  const filterOptions = { branches: cfgOptions.branches, statuses: cfgOptions.statuses, agents: cfgOptions.agents };
+  const setWidgetFilter = useCallback((key, val) => setWidgetFilters(prev => ({ ...prev, [key]: val })), []);
 
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
   const fetch = useCallback(async () => {
     setLoading(true); setError(null);
-    bookingsCache.current = {};   // filter changed → invalidate drill-down cache
+    bookingsCache.current = {};   // filters changed → invalidate drill-down cache
     setDrillDown(null);
     try {
-      const res = await api.get('/bookings/cc-report', { params: filterToParams(filter) });
+      const res = await api.get('/bookings/cc-report', { params: widgetFiltersToParam(widgetFilters) });
       setData(res.data.data);
       setRefreshAt(new Date());
     } catch (e) {
@@ -55,7 +57,7 @@ export default function CCBookingReport() {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [widgetFilters]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -97,7 +99,7 @@ export default function CCBookingReport() {
     try {
       let all = bookingsCache.current[chartKey];
       if (!all) {
-        const res = await getCCReportDrilldown(section, filterToParams(filter));
+        const res = await getCCReportDrilldown(section, singleFilterToParam(widgetFilters[chartKey]));
         all = res.data?.bookings || [];
         bookingsCache.current[chartKey] = all;
       }
@@ -297,12 +299,6 @@ export default function CCBookingReport() {
           </div>
           <div className="ccr-header-actions">
             <span className="ccr-refresh-label">Updated {refreshAt.toLocaleTimeString()}</span>
-            <ReportFilter
-              branches={cfgOptions.branches}
-              agents={cfgOptions.agents}
-              value={filter}
-              onApply={setFilter}
-            />
             <button
               className={`ccr-btn${snapshotMode ? ' active' : ''}`}
               onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }}
@@ -363,6 +359,7 @@ export default function CCBookingReport() {
         <div className="ccr-section">
           <div className="ccr-row">
             <Snap id="chart-today" className="ccr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Schedules Today" value={widgetFilters.today || EMPTY_WFILTER} onApply={v => setWidgetFilter('today', v)} /></div>
               <ReactApexChart
                 type="bar" height={320}
                 options={barOptions(todayChart.categories, todayChart.colors, 'Total Schedules Today per Branch', 'today', 'schedules-today')}
@@ -385,6 +382,7 @@ export default function CCBookingReport() {
         <div className="ccr-section">
           <div className="ccr-row">
             <Snap id="chart-arrivals" className="ccr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Arrivals" value={widgetFilters.arrivals || EMPTY_WFILTER} onApply={v => setWidgetFilter('arrivals', v)} /></div>
               <ReactApexChart
                 type="bar" height={320}
                 options={barOptions(arrivalsChart.categories, arrivalsChart.colors, 'Total Arrivals per Branch', 'arrivals', 'arrivals')}
@@ -407,6 +405,7 @@ export default function CCBookingReport() {
         <div className="ccr-section">
           <div className="ccr-row">
             <Snap id="chart-tomorrow" className="ccr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Sched Tomorrow" value={widgetFilters.tomorrow || EMPTY_WFILTER} onApply={v => setWidgetFilter('tomorrow', v)} /></div>
               <ReactApexChart
                 type="bar" height={320}
                 options={barOptions(tomorrowChart.categories, tomorrowChart.colors, 'Total Sched For Tomorrow per Branch', 'tomorrow', 'schedules-tomorrow')}
@@ -429,6 +428,7 @@ export default function CCBookingReport() {
         <div className="ccr-section">
           <div className="ccr-row ccr-row-full">
             <Snap id="chart-payment" className="ccr-chart-wrap ccr-full">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Payment Tomorrow" value={widgetFilters.payment || EMPTY_WFILTER} onApply={v => setWidgetFilter('payment', v)} /></div>
               <ReactApexChart
                 type="bar" height={300}
                 options={{
@@ -458,6 +458,7 @@ export default function CCBookingReport() {
         <div className="ccr-section">
           <div className="ccr-row">
             <Snap id="chart-next7" className="ccr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Next 7 Days" value={widgetFilters.next7 || EMPTY_WFILTER} onApply={v => setWidgetFilter('next7', v)} /></div>
               <ReactApexChart
                 type="bar" height={320}
                 options={barOptions(next7Chart.categories, next7Chart.colors, 'Total Schedules for the Next 7 Days', 'next7', 'next7days')}
@@ -480,6 +481,7 @@ export default function CCBookingReport() {
         <div className="ccr-section">
           <div className="ccr-row">
             <Snap id="chart-ots" className="ccr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Total OTS" value={widgetFilters.ots || EMPTY_WFILTER} onApply={v => setWidgetFilter('ots', v)} /></div>
               <ReactApexChart
                 type="bar" height={320}
                 options={barOptions(otsChart.categories, otsChart.colors, 'Total OTS (Today + Tomorrow + Next 7 Days)', 'ots', 'ots')}
@@ -499,6 +501,7 @@ export default function CCBookingReport() {
         <div className="ccr-section">
           <div className="ccr-row">
             <Snap id="chart-cancellations" className="ccr-chart-wrap">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Cancellations" value={widgetFilters.cancellations || EMPTY_WFILTER} onApply={v => setWidgetFilter('cancellations', v)} /></div>
               <ReactApexChart
                 type="bar" height={320}
                 options={barOptions(cancelChart.categories, cancelColors, 'Cancellation per Branch', 'cancellations', 'cancellations')}
