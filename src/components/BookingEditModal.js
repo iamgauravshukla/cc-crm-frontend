@@ -158,7 +158,7 @@ function BookingEditModal({ booking, onClose, onSaved }) {
               </div>
               <div className="form-group">
                 <label>Age</label>
-                <input type="number" name="age" value={form.age} onChange={change} min="1" />
+                <input type="number" name="age" value={form.age} onChange={change} onWheel={(e) => e.currentTarget.blur()} min="1" />
               </div>
               <div className="form-group">
                 <label>Gender</label>
@@ -199,7 +199,7 @@ function BookingEditModal({ booking, onClose, onSaved }) {
               {user?.role !== 'Agent' && (
                 <div className="form-group">
                   <label>Total Price</label>
-                  <input type="number" name="totalPrice" value={form.totalPrice} onChange={change} min="0" step="any" />
+                  <input type="number" name="totalPrice" value={form.totalPrice} onChange={change} onWheel={(e) => e.currentTarget.blur()} min="0" step="any" />
                 </div>
               )}
               <div className="form-group">

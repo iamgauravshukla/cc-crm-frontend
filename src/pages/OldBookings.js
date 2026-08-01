@@ -1552,6 +1552,7 @@ function OldBookings() {
                       name="age"
                       value={editFormData.age}
                       onChange={handleEditFormChange}
+                      onWheel={(e) => e.currentTarget.blur()}
                       required
                       min="1"
                     />
@@ -1638,6 +1639,7 @@ function OldBookings() {
                         name="totalPrice"
                         value={editFormData.totalPrice}
                         onChange={handleEditFormChange}
+                        onWheel={(e) => e.currentTarget.blur()}
                         required
                         min="0"
                         step="any"
@@ -1781,6 +1783,7 @@ function OldBookings() {
                       name="companionAge"
                       value={editFormData.companionAge}
                       onChange={handleEditFormChange}
+                      onWheel={(e) => e.currentTarget.blur()}
                       min="1"
                     />
                   </div>

@@ -187,6 +187,7 @@ function CreateBooking() {
                       name="age"
                       value={formData.age}
                       onChange={handleChange}
+                      onWheel={(e) => e.currentTarget.blur()}
                       placeholder="Enter age"
                       required
                       min="1"
@@ -358,6 +359,7 @@ function CreateBooking() {
                       name="totalPrice"
                       value={formData.totalPrice}
                       onChange={handleChange}
+                      onWheel={(e) => e.currentTarget.blur()}
                       placeholder="0.00"
                       required
                       min="0"
@@ -408,6 +410,7 @@ function CreateBooking() {
                       name="companionAge"
                       value={formData.companionAge}
                       onChange={handleChange}
+                      onWheel={(e) => e.currentTarget.blur()}
                       placeholder="Age"
                       min="1"
                     />

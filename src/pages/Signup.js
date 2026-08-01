@@ -12,6 +12,7 @@ function Signup() {
     password: '',
     confirmPassword: '',
     role: 'Agent', // Default to Agent
+    masterPassword: '', // required only when creating an Admin
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -224,6 +225,24 @@ function Signup() {
               <span className="input-icon">👥</span>
             </div>
           </div>
+
+          {formData.role === 'Admin' && (
+            <div className="modern-form-group">
+              <label htmlFor="masterPassword">Master Password</label>
+              <div className="input-wrapper">
+                <input
+                  type="password"
+                  id="masterPassword"
+                  name="masterPassword"
+                  value={formData.masterPassword}
+                  onChange={handleChange}
+                  required
+                  placeholder="Required to create an Admin account"
+                />
+                <span className="input-icon">🗝️</span>
+              </div>
+            </div>
+          )}
 
           <button type="submit" className="btn-modern-primary" disabled={loading}>
             {loading ? 'Creating account...' : 'Sign Up'}
