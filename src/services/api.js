@@ -55,6 +55,7 @@ export const getCustomerHistory = (query)         => api.get('/bookings/customer
 export const exportBookings     = (params)        => api.get('/bookings/export', { params, responseType: 'blob' });
 export const getActivityLog     = (bookingId)     => api.get(`/bookings/${bookingId}/activity`);
 export const getKanbanBookings  = (params)        => api.get('/bookings/kanban', { params });
+export const getFilterOptions   = ()              => api.get('/bookings/filter-options');
 export const updateBooking      = (id, data)      => api.put(`/bookings/${id}`, data);
 export const updateValidation   = (id, data)      => api.patch(`/bookings/${id}/validation`, data);
 export const updateBookingFlags = (id, data)      => api.patch(`/bookings/${id}/flags`, data);

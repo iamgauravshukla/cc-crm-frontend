@@ -49,6 +49,8 @@ const hasValue = (c) => {
   return !!(c.value && String(c.value).trim());
 };
 const toArray = (v) => (Array.isArray(v) ? v : (v == null || v === '' ? [] : [v]));
+// A custom {from,to} date range (as opposed to an array of preset keys).
+const isRange = (v) => !!v && !Array.isArray(v) && typeof v === 'object';
 
 /**
  * Multi-select value picker (checkbox dropdown, like Monday's chips).
@@ -67,8 +69,10 @@ function MultiSelect({ options = [], value, onChange, placeholder }) {
   const norm = options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o));
   const sel  = toArray(value);
   const toggle = (v) => onChange(sel.includes(v) ? sel.filter((x) => x !== v) : [...sel, v]);
+  const allValues = norm.map((o) => o.value);
+  const allSelected = allValues.length > 0 && allValues.every((v) => sel.includes(v));
   const text = sel.length
-    ? norm.filter((o) => sel.includes(o.value)).map((o) => o.label).join(', ')
+    ? (allSelected ? 'All selected' : norm.filter((o) => sel.includes(o.value)).map((o) => o.label).join(', '))
     : (placeholder || 'Select…');
 
   return (
@@ -80,6 +84,14 @@ function MultiSelect({ options = [], value, onChange, placeholder }) {
       {open && (
         <div className="wf-ms-menu">
           {norm.length === 0 && <div className="wf-ms-empty">No options</div>}
+          {norm.length > 0 && (
+            <div className="wf-ms-head">
+              <button type="button" onClick={() => onChange(allSelected ? [] : allValues)}>
+                {allSelected ? 'Deselect all' : 'Select all'}
+              </button>
+              {sel.length > 0 && <button type="button" onClick={() => onChange([])}>Clear</button>}
+            </div>
+          )}
           {norm.map((o) => (
             <label key={o.value} className="wf-ms-opt">
               <input type="checkbox" checked={sel.includes(o.value)} onChange={() => toggle(o.value)} />
@@ -95,9 +107,9 @@ function MultiSelect({ options = [], value, onChange, placeholder }) {
 /**
  * Per-widget condition builder. Refines the widget's built-in formula with
  * conditions on Branch / Status / Agent (is / is not / is like) and Booking
- * Schedule / Booked On date presets (is / is not — Today, Tomorrow, Next 7 Days…).
- * Each value is multi-select (matches ANY for is/is-like, NONE for is-not),
- * conditions combined by AND or OR.
+ * Schedule / Booked On dates (is / is not — preset windows or a custom range).
+ * Each value is multi-select with Select-all (matches ANY for is/is-like, NONE
+ * for is-not), conditions combined by AND or OR.
  * Props: options {branches,statuses,agents}, value, onApply, label.
  */
 function WidgetFilter({ options = {}, value = EMPTY_WFILTER, onApply, label }) {
@@ -182,10 +194,10 @@ function WidgetFilter({ options = {}, value = EMPTY_WFILTER, onApply, label }) {
                     value={c.op}
                     onChange={(e) => {
                       const nop = e.target.value;
-                      // isLike uses a free-text string; the others use a multi-select array.
+                      // isLike uses a free-text string; others keep their array / custom-range value.
                       const nval = nop === 'isLike'
                         ? (typeof c.value === 'string' ? c.value : '')
-                        : toArray(c.value);
+                        : (typeof c.value === 'string' ? (c.value ? [c.value] : []) : c.value);
                       setCond(i, { op: nop, value: nval });
                     }}
                   >
@@ -193,12 +205,24 @@ function WidgetFilter({ options = {}, value = EMPTY_WFILTER, onApply, label }) {
                   </select>
                 </div>
                 {DATE_FIELDS.has(c.field) ? (
-                  <MultiSelect
-                    options={DATE_PRESETS.map((p) => ({ value: p.key, label: p.label }))}
-                    value={c.value}
-                    onChange={(v) => setCond(i, { value: v })}
-                    placeholder="Select dates…"
-                  />
+                  isRange(c.value) ? (
+                    <div className="wf-range">
+                      <input type="date" value={c.value.from || ''} onChange={(e) => setCond(i, { value: { ...c.value, from: e.target.value } })} aria-label="From date" />
+                      <span className="wf-range-sep">→</span>
+                      <input type="date" value={c.value.to || ''} onChange={(e) => setCond(i, { value: { ...c.value, to: e.target.value } })} aria-label="To date" />
+                      <button type="button" className="wf-linkbtn" title="Use presets instead" onClick={() => setCond(i, { value: [] })}>Presets</button>
+                    </div>
+                  ) : (
+                    <div className="wf-datewrap">
+                      <MultiSelect
+                        options={DATE_PRESETS.map((p) => ({ value: p.key, label: p.label }))}
+                        value={c.value}
+                        onChange={(v) => setCond(i, { value: v })}
+                        placeholder="Select dates…"
+                      />
+                      <button type="button" className="wf-linkbtn" onClick={() => setCond(i, { value: { from: '', to: '' } })}>Custom range…</button>
+                    </div>
+                  )
                 ) : c.op === 'isLike' ? (
                   <input type="text" className="wf-val" placeholder="contains…" value={typeof c.value === 'string' ? c.value : ''} onChange={(e) => setCond(i, { value: e.target.value })} />
                 ) : (

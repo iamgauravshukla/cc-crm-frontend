@@ -8,7 +8,7 @@ import Loader from '../components/Loader';
 import api, { getCCReportDrilldown } from '../services/api';
 import ScrollableTable from '../components/ScrollableTable';
 import WidgetFilter, { widgetFiltersToParam, singleFilterToParam, EMPTY_WFILTER } from '../components/WidgetFilter';
-import { useConfig } from '../hooks/useConfig';
+import { useFilterOptions } from '../hooks/useFilterOptions';
 import './CCBookingReport.css';
 
 const CHART_COLORS = [
@@ -37,8 +37,7 @@ export default function CCBookingReport() {
 
   // Per-widget refine filters, keyed by chartKey (today, tomorrow, payment, next7, ots, arrivals, cancellations)
   const [widgetFilters, setWidgetFilters] = useState({});
-  const { options: cfgOptions } = useConfig();
-  const filterOptions = { branches: cfgOptions.branches, statuses: cfgOptions.statuses, agents: cfgOptions.agents };
+  const filterOptions = useFilterOptions();
   const setWidgetFilter = useCallback((key, val) => setWidgetFilters(prev => ({ ...prev, [key]: val })), []);
 
   const { theme } = useTheme();

@@ -8,7 +8,7 @@ import { FiRefreshCw, FiAlertCircle, FiX, FiMaximize2, FiPhone, FiMail, FiCamera
 import { useTheme } from '../context/ThemeContext';
 import ScrollableTable from '../components/ScrollableTable';
 import WidgetFilter, { widgetFiltersToParam, singleFilterToParam, EMPTY_WFILTER } from '../components/WidgetFilter';
-import { useConfig } from '../hooks/useConfig';
+import { useFilterOptions } from '../hooks/useFilterOptions';
 import './DailyReports.css';
 
 const BRANCH_COLORS = [
@@ -41,8 +41,7 @@ const DailyReports = () => {
 
   // Per-widget refine filters — keyed by chartKey (ots, overall, arrivals-today, …)
   const [widgetFilters, setWidgetFilters] = useState({});
-  const { options: cfgOptions } = useConfig();
-  const filterOptions = { branches: cfgOptions.branches, statuses: cfgOptions.statuses, agents: cfgOptions.agents };
+  const filterOptions = useFilterOptions();
   const setWidgetFilter = useCallback((key, val) => setWidgetFilters(prev => ({ ...prev, [key]: val })), []);
 
   const { theme } = useTheme();

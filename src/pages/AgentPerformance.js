@@ -5,11 +5,28 @@ import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import QuickFilterBar from '../components/QuickFilterBar';
 import { useTheme } from '../context/ThemeContext';
-import { FiTrendingUp, FiDollarSign, FiUsers, FiAward, FiPercent, FiTarget, FiBarChart2 } from 'react-icons/fi';
+import { FiTrendingUp, FiDollarSign, FiUsers, FiAward, FiPercent, FiTarget, FiBarChart2, FiX, FiMaximize2 } from 'react-icons/fi';
+
+// Status → colour, mirroring the Monday per-agent charts.
+const STATUS_COLORS = {
+  'Arrived & Bought': '#10B981',
+  'Arrived Not Potential': '#EF4444',
+  'Arrived On Treatment': '#22C55E',
+  'Comeback & Bought': '#14B8A6',
+  'Comeback': '#0EA5E9',
+  'Cancelled': '#6B7280',
+  'Scheduled': '#3B82F6',
+  'Promo Hunter': '#F59E0B',
+  'No Show': '#9CA3AF',
+  'Refund': '#F43F5E',
+  'Old Client': '#8B5CF6',
+};
+const statusColor = (label) => STATUS_COLORS[label] || '#A78BFA';
 
 function AgentPerformance() {
   const [loading, setLoading] = useState(true);
   const [performanceData, setPerformanceData] = useState(null);
+  const [modalAgent, setModalAgent] = useState(null); // agent whose breakdown modal is open
   const [activeFilters, setActiveFilters] = useState([
     { id: 'qf-date-default', field: 'dateRange', fieldLabel: 'Date Range', operator: 'is', value: '30', dateFrom: '', dateTo: '', displayValue: 'Last 30 Days' },
   ]);
@@ -450,8 +467,19 @@ function AgentPerformance() {
                 <div className="analytics-card-body">
                   <div className="arrivals-averages-grid">
                     {getFilteredAgents().map(agent => (
-                      <div key={agent.name} className="arrivals-agent-card">
-                        <div className="arrivals-agent-name">{agent.name}</div>
+                      <div
+                        key={agent.name}
+                        className="arrivals-agent-card arrivals-agent-card--clickable"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setModalAgent(agent)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModalAgent(agent); } }}
+                        title={`View ${agent.name}'s booking breakdown`}
+                      >
+                        <div className="arrivals-agent-name">
+                          {agent.name}
+                          <FiMaximize2 className="arrivals-agent-expand" size={13} />
+                        </div>
                         <div className="arrivals-stats-row">
                           <div className="arrivals-stat">
                             <span className="arrivals-stat-label">Overall</span>
@@ -697,6 +725,62 @@ function AgentPerformance() {
           )}
         </div>
       </div>
+
+      {/* Per-agent booking-breakdown modal (expandable graph) */}
+      {modalAgent && (() => {
+        const entries = Object.entries(modalAgent.statusBreakdown || {}).sort((a, b) => b[1] - a[1]);
+        const total = entries.reduce((s, [, n]) => s + n, 0);
+        const cats = entries.map(([k]) => k);
+        const colors = cats.map(statusColor);
+        const options = {
+          chart: { type: 'bar', background: 'transparent', toolbar: { show: false }, fontFamily: 'inherit' },
+          theme: { mode: isDarkMode ? 'dark' : 'light' },
+          plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', distributed: true, dataLabels: { position: 'top' } } },
+          dataLabels: { enabled: true, offsetY: -20, style: { fontSize: '12px', fontWeight: 700, colors: [isDarkMode ? '#e2e8f0' : '#1e293b'] } },
+          colors,
+          legend: { show: false },
+          grid: { borderColor: isDarkMode ? '#334155' : '#e2e8f0', strokeDashArray: 4 },
+          xaxis: { categories: cats, labels: { rotate: -25, style: { colors: isDarkMode ? '#94a3b8' : '#64748b', fontSize: '11px' } } },
+          yaxis: { labels: { style: { colors: isDarkMode ? '#94a3b8' : '#64748b' } } },
+          tooltip: { theme: isDarkMode ? 'dark' : 'light', y: { formatter: (v) => `${v} booking${v !== 1 ? 's' : ''}` } },
+        };
+        const series = [{ name: 'Bookings', data: entries.map(([, n]) => n) }];
+        return (
+          <div className="modal-overlay" onClick={() => setModalAgent(null)}>
+            <div className="modal-content ap-agent-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{modalAgent.name} — Booking Breakdown</h2>
+                <button className="modal-close-btn" onClick={() => setModalAgent(null)} aria-label="Close"><FiX size={22} /></button>
+              </div>
+              <div className="ap-agent-modal-body">
+                <div className="ap-agent-modal-stats">
+                  <div className="ap-am-stat"><span className="ap-am-label">Total Bookings</span><span className="ap-am-value">{modalAgent.bookings}</span></div>
+                  <div className="ap-am-stat"><span className="ap-am-label">Arrivals</span><span className="ap-am-value" style={{ color: '#10B981' }}>{modalAgent.arrivals}</span></div>
+                  <div className="ap-am-stat"><span className="ap-am-label">Conversion</span><span className="ap-am-value">{(modalAgent.conversionRate ?? 0).toFixed(1)}%</span></div>
+                  <div className="ap-am-stat"><span className="ap-am-label">Arrival Rate</span><span className="ap-am-value">{(modalAgent.arrivalRate ?? 0).toFixed(1)}%</span></div>
+                  <div className="ap-am-stat"><span className="ap-am-label">Revenue</span><span className="ap-am-value">₱{Number(modalAgent.revenue || 0).toLocaleString()}</span></div>
+                </div>
+                {total > 0 ? (
+                  <>
+                    <Chart options={options} series={series} type="bar" height={360} />
+                    <div className="ap-am-legend">
+                      {entries.map(([k, n]) => (
+                        <div key={k} className="ap-am-legend-item">
+                          <span className="ap-am-dot" style={{ background: statusColor(k) }} />
+                          <span className="ap-am-legend-label">{k}</span>
+                          <span className="ap-am-legend-count">{n}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="no-data" style={{ padding: '2rem' }}>No booking status data for this agent in the selected range.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </>
   );
 }

@@ -2480,7 +2480,62 @@ body.sidebar-collapsed .main-content {
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
+
+.arrivals-agent-card--clickable { cursor: pointer; }
+.arrivals-agent-card--clickable:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+.arrivals-agent-expand {
+  color: var(--text-secondary);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.arrivals-agent-card--clickable:hover .arrivals-agent-expand { opacity: 1; color: #3b82f6; }
+
+/* Per-agent booking-breakdown modal */
+.ap-agent-modal { max-width: 760px; }
+.ap-agent-modal-body { padding: 20px 24px 24px; }
+.ap-agent-modal-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.ap-am-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+.ap-am-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.ap-am-value { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); }
+.ap-am-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+.ap-am-legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--text-secondary); }
+.ap-am-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.ap-am-legend-label { color: var(--text-primary); }
+.ap-am-legend-count { font-weight: 700; color: var(--text-primary); }
 
 .arrivals-stats-row {
   display: flex;
