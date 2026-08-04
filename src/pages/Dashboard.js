@@ -452,7 +452,7 @@ function Dashboard({ onLogout }) {
                               {booking.status || 'Scheduled'}
                             </span>
                           </td>
-                          <td>{booking.promoHunterStatus || '-'}</td>
+                          <td>{booking.isPromoHunter ? '🎯 Promo Hunter' : (booking.promoHunterStatus || '-')}</td>
                           <td>{booking.matchReason || '-'}</td>
                           <td>{booking.matchedSource || '-'}</td>
                         </tr>

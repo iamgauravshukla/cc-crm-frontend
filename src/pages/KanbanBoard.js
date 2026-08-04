@@ -251,6 +251,7 @@ export default function KanbanBoard() {
                         key={card.recordId}
                         className={[
                           'kanban-card',
+                          card.isPromoHunter ? 'promo-hunter-card' : '',
                           draggedId === card.recordId ? 'dragging' : '',
                           updating[card.recordId]     ? 'updating' : '',
                         ].filter(Boolean).join(' ')}
@@ -267,6 +268,7 @@ export default function KanbanBoard() {
                             {card.firstName} {card.lastName}
                           </span>
                           <span className="card-flags">
+                            {card.isPromoHunter  && <span className="card-flag promo" title="Promo Hunter">🎯</span>}
                             {card.isOts          && <span className="card-flag ots"   title="OTS">OTS</span>}
                             {card.isHighPriority && <span className="card-flag prio"  title="High Priority"><FiStar size={10} /></span>}
                             {card.doNotCall      && <span className="card-flag dnc"   title="Do Not Call">DNC</span>}

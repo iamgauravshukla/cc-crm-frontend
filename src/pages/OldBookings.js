@@ -556,6 +556,7 @@ function OldBookings() {
       isOts: booking.isOts || false,
       isAdId: booking.isAdId || false,
       isCompanion: booking.isCompanion || false,
+      isPromoHunter: booking.isPromoHunter || false,
       isHighPriority: booking.isHighPriority || false,
       isMetaConversion: booking.isMetaConversion || false,
       followUpDate: booking.followUpDate || '',
@@ -1039,7 +1040,7 @@ function OldBookings() {
                   <tbody>
                     {bookings.map((booking, index) => (
                       <tr key={index} className={[
-                        (booking.status || '').toLowerCase() === 'promo hunter' ? 'promo-hunter-row' : '',
+                        booking.isPromoHunter ? 'promo-hunter-row' : '',
                         selectedIds.has(booking.recordId) ? 'row-selected' : ''
                       ].filter(Boolean).join(' ')}>
                         <td className="checkbox-col">
@@ -1059,6 +1060,7 @@ function OldBookings() {
                           </button>
                         </td>
                         <td className="id-flags-cell">
+                          {booking.isPromoHunter     && <span className="id-badge id-promo" title="Promo Hunter">🎯</span>}
                           {booking.isOts            && <span className="id-badge id-ots"  title="On-the-spot">OTS</span>}
                           {booking.isAdId            && <span className="id-badge id-adid" title="Ad ID">AD</span>}
                           {booking.isHighPriority    && <span className="id-badge id-hp"   title="High Priority">HP</span>}
@@ -1191,11 +1193,11 @@ function OldBookings() {
             ) : (
               <div className="bookings-cards-grid">
                 {bookings.map((booking, index) => (
-                  <div key={index} className={`booking-card${(booking.status || '').toLowerCase() === 'promo hunter' ? ' promo-hunter-card' : ''}`} ref={el => cardRefs.current[index] = el}>
+                  <div key={index} className={`booking-card${booking.isPromoHunter ? ' promo-hunter-card' : ''}`} ref={el => cardRefs.current[index] = el}>
                     <div className="booking-card-header">
                       <div className="card-header-left">
                         <h3>{booking.firstName} {booking.lastName}</h3>
-                        {(booking.status || '').toLowerCase() === 'promo hunter' && (
+                        {booking.isPromoHunter && (
                           <span className="promo-hunter-badge-inline">🎯 Promo Hunter</span>
                         )}
                         <span className="card-date">
@@ -1734,6 +1736,10 @@ function OldBookings() {
                       <label style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'14px'}}>
                         <input type="checkbox" name="isCompanion" checked={!!editFormData.isCompanion} onChange={handleEditFormChange} />
                         Companion
+                      </label>
+                      <label style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'14px'}}>
+                        <input type="checkbox" name="isPromoHunter" checked={!!editFormData.isPromoHunter} onChange={handleEditFormChange} />
+                        🎯 Promo Hunter
                       </label>
                       <label style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',fontSize:'14px'}}>
                         <input type="checkbox" name="isHighPriority" checked={!!editFormData.isHighPriority} onChange={handleEditFormChange} />

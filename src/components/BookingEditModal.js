@@ -63,6 +63,7 @@ function BookingEditModal({ booking, onClose, onSaved }) {
           companionLastName: b.companionLastName || '',
           companionAge: b.companionAge ?? '',
           companionTreatment: matchConfig(b.companionTreatment, treatments),
+          isPromoHunter: b.isPromoHunter || false,
         });
       } catch (err) {
         if (alive) setError('Failed to load booking details');
@@ -75,8 +76,8 @@ function BookingEditModal({ booking, onClose, onSaved }) {
   }, [booking.recordId]);
 
   const change = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const submit = async (e) => {
@@ -97,6 +98,7 @@ function BookingEditModal({ booking, onClose, onSaved }) {
         status: form.status, treatment: form.treatment, time: form.time,
         branch: form.branch, agent: form.agent, firstName: form.firstName, lastName: form.lastName,
         totalPrice: Number.isNaN(formPrice) ? origPrice : formPrice,
+        isPromoHunter: form.isPromoHunter,
       });
     } catch (err) {
       setError(err.response?.data?.error || err.message || 'Failed to update booking');
@@ -146,6 +148,14 @@ function BookingEditModal({ booking, onClose, onSaved }) {
                     {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                     {form.status && !statuses.includes(form.status) && <option value={form.status}>{form.status}</option>}
                   </select>
+                </div>
+              )}
+              {user?.role !== 'Agent' && (
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input type="checkbox" name="isPromoHunter" checked={!!form.isPromoHunter} onChange={change} />
+                    🎯 Promo Hunter
+                  </label>
                 </div>
               )}
               <div className="form-group">

@@ -45,6 +45,7 @@ function CreateBooking() {
     followUpDate: '',
     isOts: false,
     isCompanion: false,
+    isPromoHunter: false,
   });
 
   // Get current user from localStorage and auto-fill agent field if user is an agent
@@ -522,6 +523,13 @@ function CreateBooking() {
                     <span>OTS (On-The-Spot booking)</span>
                   </label>
                   <small className="form-hint">Tick if the client booked and arrived on the same day.</small>
+                </div>
+                <div className="form-group full-width">
+                  <label className="cb-inline-toggle">
+                    <input type="checkbox" name="isPromoHunter" checked={formData.isPromoHunter} onChange={handleChange} />
+                    <span>🎯 Promo Hunter</span>
+                  </label>
+                  <small className="form-hint">Mark the customer as a promo hunter. This is separate from the booking status — a booking can be Cancelled or Scheduled and still be a promo hunter.</small>
                 </div>
               </div>
 
