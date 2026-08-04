@@ -154,92 +154,87 @@ function WidgetFilter({ options = {}, value = EMPTY_WFILTER, onApply, label }) {
       {open && (
         <div className="wf-panel" role="dialog">
           <div className="wf-head">
-            <span className="wf-title">Filter{label ? ` · ${label}` : ''}</span>
-            <button type="button" className="wf-close" onClick={() => setOpen(false)} aria-label="Close"><FiX size={15} /></button>
+            <span className="wf-title">Advanced filters{label ? ` · ${label}` : ''}</span>
+            <button type="button" className="wf-close" onClick={() => setOpen(false)} aria-label="Close"><FiX size={16} /></button>
           </div>
-
-          {(draft.conditions || []).length > 1 && (
-            <div className="wf-logic">
-              <span className="wf-logic-label">Match</span>
-              <div className="wf-seg">
-                <button type="button" className={draft.logic === 'and' ? 'on' : ''} onClick={() => setDraft((d) => ({ ...d, logic: 'and' }))}>All · AND</button>
-                <button type="button" className={draft.logic === 'or' ? 'on' : ''} onClick={() => setDraft((d) => ({ ...d, logic: 'or' }))}>Any · OR</button>
-              </div>
-            </div>
-          )}
 
           <div className="wf-conds">
             {(draft.conditions || []).length === 0 && <div className="wf-empty">No conditions — showing the full widget.</div>}
             {(draft.conditions || []).map((c, i) => (
-              <div className="wf-cond" key={i}>
-                <button type="button" className="wf-del" onClick={() => delCond(i)} aria-label="Remove condition"><FiX size={13} /></button>
-                <div className="wf-cond-row">
-                  <select
-                    className="wf-field"
-                    value={c.field}
-                    onChange={(e) => {
-                      const nf = e.target.value;
-                      const nowDate = DATE_FIELDS.has(nf);
-                      setCond(i, {
-                        field: nf,
-                        op: nowDate && c.op === 'isLike' ? 'is' : c.op,
-                        value: [],
-                      });
-                    }}
-                  >
-                    {FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
-                  </select>
-                  <select
-                    className="wf-op"
-                    value={c.op}
-                    onChange={(e) => {
-                      const nop = e.target.value;
-                      // isLike uses a free-text string; others keep their array / custom-range value.
-                      const nval = nop === 'isLike'
-                        ? (typeof c.value === 'string' ? c.value : '')
-                        : (typeof c.value === 'string' ? (c.value ? [c.value] : []) : c.value);
-                      setCond(i, { op: nop, value: nval });
-                    }}
-                  >
-                    {(DATE_FIELDS.has(c.field) ? DATE_OPS : TEXT_OPS).map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
-                  </select>
+              <div className="wf-row" key={i}>
+                <div className="wf-lead">
+                  {i === 0
+                    ? <span className="wf-where">Where</span>
+                    : (
+                      <select className="wf-andor" value={draft.logic} onChange={(e) => setDraft((d) => ({ ...d, logic: e.target.value }))}>
+                        <option value="and">And</option>
+                        <option value="or">Or</option>
+                      </select>
+                    )}
                 </div>
-                {DATE_FIELDS.has(c.field) ? (
-                  isRange(c.value) ? (
-                    <div className="wf-range">
-                      <input type="date" value={c.value.from || ''} onChange={(e) => setCond(i, { value: { ...c.value, from: e.target.value } })} aria-label="From date" />
-                      <span className="wf-range-sep">→</span>
-                      <input type="date" value={c.value.to || ''} onChange={(e) => setCond(i, { value: { ...c.value, to: e.target.value } })} aria-label="To date" />
-                      <button type="button" className="wf-linkbtn" title="Use presets instead" onClick={() => setCond(i, { value: [] })}>Presets</button>
-                    </div>
+                <select
+                  className="wf-field"
+                  value={c.field}
+                  onChange={(e) => {
+                    const nf = e.target.value;
+                    const nowDate = DATE_FIELDS.has(nf);
+                    setCond(i, { field: nf, op: nowDate && c.op === 'isLike' ? 'is' : c.op, value: [] });
+                  }}
+                >
+                  {FIELDS.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
+                </select>
+                <select
+                  className="wf-op"
+                  value={c.op}
+                  onChange={(e) => {
+                    const nop = e.target.value;
+                    const nval = nop === 'isLike'
+                      ? (typeof c.value === 'string' ? c.value : '')
+                      : (typeof c.value === 'string' ? (c.value ? [c.value] : []) : c.value);
+                    setCond(i, { op: nop, value: nval });
+                  }}
+                >
+                  {(DATE_FIELDS.has(c.field) ? DATE_OPS : TEXT_OPS).map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                </select>
+                <div className="wf-valcell">
+                  {DATE_FIELDS.has(c.field) ? (
+                    isRange(c.value) ? (
+                      <div className="wf-range">
+                        <input type="date" value={c.value.from || ''} onChange={(e) => setCond(i, { value: { ...c.value, from: e.target.value } })} aria-label="From date" />
+                        <span className="wf-range-sep">→</span>
+                        <input type="date" value={c.value.to || ''} onChange={(e) => setCond(i, { value: { ...c.value, to: e.target.value } })} aria-label="To date" />
+                        <button type="button" className="wf-linkbtn" title="Use presets instead" onClick={() => setCond(i, { value: [] })}>Presets</button>
+                      </div>
+                    ) : (
+                      <div className="wf-datewrap">
+                        <MultiSelect
+                          options={DATE_PRESETS.map((p) => ({ value: p.key, label: p.label }))}
+                          value={c.value}
+                          onChange={(v) => setCond(i, { value: v })}
+                          placeholder="Select dates…"
+                        />
+                        <button type="button" className="wf-linkbtn" onClick={() => setCond(i, { value: { from: '', to: '' } })}>Custom range…</button>
+                      </div>
+                    )
+                  ) : c.op === 'isLike' ? (
+                    <input type="text" className="wf-val" placeholder="contains…" value={typeof c.value === 'string' ? c.value : ''} onChange={(e) => setCond(i, { value: e.target.value })} />
                   ) : (
-                    <div className="wf-datewrap">
-                      <MultiSelect
-                        options={DATE_PRESETS.map((p) => ({ value: p.key, label: p.label }))}
-                        value={c.value}
-                        onChange={(v) => setCond(i, { value: v })}
-                        placeholder="Select dates…"
-                      />
-                      <button type="button" className="wf-linkbtn" onClick={() => setCond(i, { value: { from: '', to: '' } })}>Custom range…</button>
-                    </div>
-                  )
-                ) : c.op === 'isLike' ? (
-                  <input type="text" className="wf-val" placeholder="contains…" value={typeof c.value === 'string' ? c.value : ''} onChange={(e) => setCond(i, { value: e.target.value })} />
-                ) : (
-                  <MultiSelect
-                    options={optsFor(c.field)}
-                    value={c.value}
-                    onChange={(v) => setCond(i, { value: v })}
-                    placeholder="Select…"
-                  />
-                )}
+                    <MultiSelect
+                      options={optsFor(c.field)}
+                      value={c.value}
+                      onChange={(v) => setCond(i, { value: v })}
+                      placeholder="Select…"
+                    />
+                  )}
+                </div>
+                <button type="button" className="wf-del" onClick={() => delCond(i)} aria-label="Remove condition"><FiX size={15} /></button>
               </div>
             ))}
-            <button type="button" className="wf-add" onClick={addCond}><FiPlus size={12} /> Add condition</button>
+            <button type="button" className="wf-add" onClick={addCond}><FiPlus size={13} /> New filter</button>
           </div>
 
           <div className="wf-actions">
-            <button type="button" className="wf-clear" onClick={clear}>Clear</button>
+            <button type="button" className="wf-clear" onClick={clear}>Clear all</button>
             <button type="button" className="wf-apply" onClick={apply}>Apply</button>
           </div>
         </div>

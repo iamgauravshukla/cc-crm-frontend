@@ -20,7 +20,7 @@
 
 .wf-panel {
   position: absolute; top: calc(100% + 6px); right: 0;
-  width: 330px;
+  width: 560px; max-width: calc(100vw - 32px);
   display: flex; flex-direction: column;
   background: var(--card-bg, #fff);
   border: 1px solid var(--border-primary, #e5e7eb);
@@ -29,37 +29,32 @@
 }
 .wf-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 11px 13px; border-bottom: 1px solid var(--border-primary, #eef0f5);
+  padding: 13px 16px; border-bottom: 1px solid var(--border-primary, #eef0f5);
 }
-.wf-title { font-size: 13px; font-weight: 700; color: var(--text-primary, #1e293b); }
+.wf-title { font-size: 14px; font-weight: 700; color: var(--text-primary, #1e293b); }
 .wf-close { border: none; background: transparent; color: var(--text-secondary, #94a3b8); cursor: pointer; padding: 2px; border-radius: 6px; display: inline-flex; }
 .wf-close:hover { background: rgba(148,163,184,.15); }
 
-.wf-logic { display: flex; align-items: center; gap: 10px; padding: 10px 13px; border-bottom: 1px solid var(--border-primary, #eef0f5); }
-.wf-logic-label { font-size: 12px; font-weight: 600; color: var(--text-secondary, #64748b); }
-.wf-seg { display: flex; flex: 1; border: 1px solid var(--border-primary, #e5e7eb); border-radius: 8px; overflow: hidden; }
-.wf-seg button { flex: 1; padding: 5px 6px; border: none; background: transparent; cursor: pointer; font-size: 11.5px; font-weight: 600; color: var(--text-secondary, #64748b); }
-.wf-seg button.on { background: #579bfc; color: #fff; }
+.wf-conds { padding: 12px 16px; overflow: visible; display: flex; flex-direction: column; gap: 9px; }
+.wf-empty { font-size: 12.5px; color: var(--text-secondary, #94a3b8); padding: 2px 0; }
 
-.wf-conds { padding: 10px 13px; overflow: visible; display: flex; flex-direction: column; gap: 8px; }
-.wf-empty { font-size: 12px; color: var(--text-secondary, #94a3b8); padding: 2px 0; }
-
-.wf-cond {
-  position: relative;
-  border: 1px solid var(--border-primary, #eef0f5); border-radius: 9px;
-  padding: 9px; padding-right: 28px;
-  display: flex; flex-direction: column; gap: 6px;
-  background: var(--input-bg, #fafbfc);
+/* Monday-style horizontal condition row: [Where/And] [Field] [Operator] [Value] [x] */
+.wf-row { display: flex; align-items: center; gap: 8px; }
+.wf-lead { flex: 0 0 62px; }
+.wf-where { font-size: 12.5px; font-weight: 600; color: var(--text-secondary, #64748b); padding-left: 2px; }
+.wf-andor { width: 100%; }
+.wf-field { flex: 0 0 130px; }
+.wf-op { flex: 0 0 108px; }
+.wf-valcell { flex: 1 1 auto; min-width: 0; }
+.wf-row select, .wf-valcell input.wf-val, .wf-andor {
+  width: 100%; padding: 7px 9px; font-size: 12.5px;
+  border: 1px solid var(--border-primary, #e5e7eb); border-radius: 8px;
+  background: var(--input-bg, #fff); color: var(--text-primary, #1e293b);
 }
-.wf-cond-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.wf-cond select, .wf-cond input.wf-val {
-  width: 100%; padding: 6px 8px; font-size: 12.5px;
-  border: 1px solid var(--border-primary, #e5e7eb); border-radius: 7px;
-  background: var(--card-bg, #fff); color: var(--text-primary, #1e293b);
-}
+.wf-field { font-weight: 600; }
 .wf-del {
-  position: absolute; top: 6px; right: 6px;
-  width: 20px; height: 20px; border: none; border-radius: 6px;
+  flex: 0 0 auto;
+  width: 26px; height: 26px; border: none; border-radius: 7px;
   background: transparent; color: var(--text-secondary, #94a3b8); cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
 }
 .wf-del:hover { background: #fee2e2; color: #dc2626; }
@@ -101,21 +96,20 @@
 .wf-linkbtn:hover { text-decoration: underline; }
 .wf-add {
   align-self: flex-start; display: inline-flex; align-items: center; gap: 5px;
-  border: 1px dashed var(--border-primary, #cbd5e1); background: transparent;
-  color: #579bfc; font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  border: none; background: transparent;
+  color: #579bfc; font-size: 12.5px; font-weight: 600; padding: 4px 2px; border-radius: 6px; cursor: pointer;
 }
-.wf-add:hover { background: rgba(87,155,252,.07); }
+.wf-add:hover { text-decoration: underline; }
 
-.wf-actions { display: flex; gap: 8px; padding: 11px 13px; border-top: 1px solid var(--border-primary, #eef0f5); }
-.wf-clear, .wf-apply { flex: 1; padding: 8px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.wf-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--border-primary, #eef0f5); }
+.wf-clear, .wf-apply { padding: 8px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .wf-clear { border: 1px solid var(--border-primary, #e5e7eb); background: transparent; color: var(--text-secondary, #64748b); }
 .wf-clear:hover { background: rgba(148,163,184,.1); }
 .wf-apply { border: none; background: #579bfc; color: #fff; }
 .wf-apply:hover { background: #3b82f6; }
 
 [data-theme='dark'] .wf-panel { box-shadow: 0 12px 32px rgba(0,0,0,.55); }
-[data-theme='dark'] .wf-cond { background: rgba(255,255,255,.03); }
-[data-theme='dark'] .wf-cond select option { background: #1c1f3b; color: #e5e7eb; }
+[data-theme='dark'] .wf-row select option { background: #1c1f3b; color: #e5e7eb; }
 [data-theme='dark'] .wf-btn.active { background: rgba(87,155,252,.2); }
 [data-theme='dark'] .wf-ms-menu { box-shadow: 0 8px 22px rgba(0,0,0,.6); }
 [data-theme='dark'] .wf-del:hover { background: rgba(220,38,38,.25); color: #fca5a5; }
