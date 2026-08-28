@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Chart from 'react-apexcharts';
-import api from '../services/api';
+import api, { getAgentBookings } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import QuickFilterBar from '../components/QuickFilterBar';
@@ -27,6 +27,7 @@ function AgentPerformance() {
   const [loading, setLoading] = useState(true);
   const [performanceData, setPerformanceData] = useState(null);
   const [modalAgent, setModalAgent] = useState(null); // agent whose breakdown modal is open
+  const [modalDrill, setModalDrill] = useState(null); // { status, bookings, loading } — bar clicked inside the modal
   const [activeFilters, setActiveFilters] = useState([
     { id: 'qf-date-default', field: 'dateRange', fieldLabel: 'Date Range', operator: 'is', value: '30', dateFrom: '', dateTo: '', displayValue: 'Last 30 Days' },
   ]);
@@ -91,6 +92,27 @@ function AgentPerformance() {
   useEffect(() => {
     fetchPerformanceData();
   }, [fetchPerformanceData]);
+
+  // Bookings behind one status bar of the per-agent modal (click a bar / legend row).
+  const loadAgentDrill = async (agentName, status) => {
+    if (modalDrill?.status === status) { setModalDrill(null); return; } // toggle off
+    setModalDrill({ status, bookings: [], loading: true });
+    try {
+      const params = { agent: agentName, status };
+      if (dateValue === 'custom' && customStart && customEnd) {
+        params.startDate = customStart;
+        params.endDate   = customEnd;
+      } else {
+        params.days = dateValue;
+      }
+      const res = await getAgentBookings(params);
+      setModalDrill(prev => prev?.status === status
+        ? { status, bookings: res.data.bookings || [], loading: false }
+        : prev);
+    } catch {
+      setModalDrill(prev => prev?.status === status ? { status, bookings: [], loading: false } : prev);
+    }
+  };
 
   const PLACEHOLDER_AGENTS = new Set(['no data', 'unknown', 'n/a', '-', '', 'none', 'unassigned']);
 
@@ -472,8 +494,8 @@ function AgentPerformance() {
                         className="arrivals-agent-card arrivals-agent-card--clickable"
                         role="button"
                         tabIndex={0}
-                        onClick={() => setModalAgent(agent)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModalAgent(agent); } }}
+                        onClick={() => { setModalAgent(agent); setModalDrill(null); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModalAgent(agent); setModalDrill(null); } }}
                         title={`View ${agent.name}'s booking breakdown`}
                       >
                         <div className="arrivals-agent-name">
@@ -733,9 +755,18 @@ function AgentPerformance() {
         const cats = entries.map(([k]) => k);
         const colors = cats.map(statusColor);
         const options = {
-          chart: { type: 'bar', background: 'transparent', toolbar: { show: false }, fontFamily: 'inherit' },
+          chart: {
+            type: 'bar', background: 'transparent', toolbar: { show: false }, fontFamily: 'inherit',
+            events: {
+              dataPointSelection: (_ev, _ctx, config) => {
+                const st = cats[config.dataPointIndex];
+                if (st) loadAgentDrill(modalAgent.name, st);
+              },
+            },
+          },
           theme: { mode: isDarkMode ? 'dark' : 'light' },
-          plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', distributed: true, dataLabels: { position: 'top' } } },
+          plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', distributed: true, dataLabels: { position: 'top' }, cursor: 'pointer' } },
+          states: { active: { filter: { type: 'darken', value: 0.7 } } },
           dataLabels: { enabled: true, offsetY: -20, style: { fontSize: '12px', fontWeight: 700, colors: [isDarkMode ? '#e2e8f0' : '#1e293b'] } },
           colors,
           legend: { show: false },
@@ -746,11 +777,11 @@ function AgentPerformance() {
         };
         const series = [{ name: 'Bookings', data: entries.map(([, n]) => n) }];
         return (
-          <div className="modal-overlay" onClick={() => setModalAgent(null)}>
+          <div className="modal-overlay" onClick={() => { setModalAgent(null); setModalDrill(null); }}>
             <div className="modal-content ap-agent-modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>{modalAgent.name} — Booking Breakdown</h2>
-                <button className="modal-close-btn" onClick={() => setModalAgent(null)} aria-label="Close"><FiX size={22} /></button>
+                <button className="modal-close-btn" onClick={() => { setModalAgent(null); setModalDrill(null); }} aria-label="Close"><FiX size={22} /></button>
               </div>
               <div className="ap-agent-modal-body">
                 <div className="ap-agent-modal-stats">
@@ -763,15 +794,62 @@ function AgentPerformance() {
                 {total > 0 ? (
                   <>
                     <Chart options={options} series={series} type="bar" height={360} />
+                    <div className="ap-am-hint">Click a bar or a status below to see its bookings</div>
                     <div className="ap-am-legend">
                       {entries.map(([k, n]) => (
-                        <div key={k} className="ap-am-legend-item">
+                        <div
+                          key={k}
+                          className={`ap-am-legend-item ap-am-legend-item--clickable${modalDrill?.status === k ? ' active' : ''}`}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => loadAgentDrill(modalAgent.name, k)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadAgentDrill(modalAgent.name, k); } }}
+                          title={`Show ${modalAgent.name}'s ${k} bookings`}
+                        >
                           <span className="ap-am-dot" style={{ background: statusColor(k) }} />
                           <span className="ap-am-legend-label">{k}</span>
                           <span className="ap-am-legend-count">{n}</span>
                         </div>
                       ))}
                     </div>
+                    {modalDrill && (
+                      <div className="ap-am-drill">
+                        <div className="ap-am-drill-header">
+                          <span className="ap-am-dot" style={{ background: statusColor(modalDrill.status) }} />
+                          <strong>{modalDrill.status}</strong>
+                          {!modalDrill.loading && (
+                            <span className="ap-am-drill-count">{modalDrill.bookings.length} booking{modalDrill.bookings.length !== 1 ? 's' : ''}</span>
+                          )}
+                          <button className="ap-am-drill-close" onClick={() => setModalDrill(null)} title="Close"><FiX size={14} /></button>
+                        </div>
+                        {modalDrill.loading ? (
+                          <div className="ap-am-drill-msg">Loading bookings…</div>
+                        ) : modalDrill.bookings.length === 0 ? (
+                          <div className="ap-am-drill-msg">No bookings found.</div>
+                        ) : (
+                          <div className="ap-am-drill-tablewrap">
+                            <table className="bookings-table">
+                              <thead>
+                                <tr>
+                                  <th>Name</th><th>Date</th><th>Branch</th><th>Treatment</th><th>Price</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {modalDrill.bookings.map((b) => (
+                                  <tr key={b.recordId}>
+                                    <td><strong>{b.firstName} {b.lastName}</strong>{b.isPromoHunter && <span title="Promo Hunter"> 🎯</span>}</td>
+                                    <td style={{ whiteSpace: 'nowrap' }}>{b.date}{b.time ? ` · ${b.time}` : ''}</td>
+                                    <td>{b.branch}</td>
+                                    <td>{b.treatment}</td>
+                                    <td>₱{Number(b.totalPrice || 0).toLocaleString()}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <div className="no-data" style={{ padding: '2rem' }}>No booking status data for this agent in the selected range.</div>

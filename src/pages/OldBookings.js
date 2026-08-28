@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera, FiTrash2, FiAlertTriangle, FiDownload, FiBookmark, FiClock, FiCheckCircle, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import html2canvas from 'html2canvas';
-import { getOldBookings, deleteBooking, exportBookings, bulkUpdateStatus, bulkDeleteBookings, getSavedViews, createSavedView, deleteSavedView, getActivityLog, updateBooking, updateValidation, updateBookingFlags } from '../services/api';
+import { getOldBookings, deleteBooking, exportBookings, bulkUpdateStatus, bulkEditBookings, bulkDeleteBookings, getSavedViews, createSavedView, deleteSavedView, getActivityLog, updateBooking, updateValidation, updateBookingFlags } from '../services/api';
 import { useConfig } from '../hooks/useConfig';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
@@ -117,9 +117,10 @@ function OldBookings() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
-  // Multi-select + bulk update
+  // Multi-select + bulk edit (pick a field, pick a value, apply to every selected row)
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [bulkStatus, setBulkStatus] = useState('');
+  const [bulkField, setBulkField] = useState('status');
+  const [bulkValue, setBulkValue] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
 
   // Export
@@ -276,10 +277,17 @@ function OldBookings() {
 
   const deriveApiParams = (filters) => {
     const p = {};
+    // Same-field filters combine: every "is" value joins one include list and every
+    // "is not" value a separate <field>Not list, so e.g. "Status is Cancelled" +
+    // "Status is not X" can be active together (double filtering).
+    const addList = (key, f) => {
+      const target = f.operator === 'is not' ? `${key}Not` : key;
+      p[target] = p[target] ? `${p[target]},${f.value}` : f.value;
+    };
     filters.forEach(f => {
-      if (f.field === 'branch')  p.branch = f.operator === 'is not' ? `NOT:${f.value}` : f.value;
-      if (f.field === 'status')  p.status = f.operator === 'is not' ? `NOT:${f.value}` : f.value;
-      if (f.field === 'agent')   p.agent  = f.value;
+      if (f.field === 'branch')  addList('branch', f);
+      if (f.field === 'status')  addList('status', f);
+      if (f.field === 'agent')   addList('agent', f);
       if (f.field === 'gender')  p.gender = f.value;
       if (f.field === 'createdDate') {
         if (f.value === 'custom') { p.createdStartDate = f.dateFrom; p.createdEndDate = f.dateTo; }
@@ -347,8 +355,12 @@ function OldBookings() {
     };
     if (editingFilterId) {
       setActiveFilters(prev => prev.map(f => f.id === editingFilterId ? newFilter : f));
-    } else {
+    } else if (getFieldConfig(builderField)?.type === 'datepreset' || builderField === 'gender') {
+      // Date/gender filters can't meaningfully stack — replace any existing one
       setActiveFilters(prev => [...prev.filter(f => f.field !== builderField), newFilter]);
+    } else {
+      // Branch / Status / Agent filters stack, enabling is + is-not on the same field
+      setActiveFilters(prev => [...prev, newFilter]);
     }
     setPage(1);
     setShowBuilder(false);
@@ -394,16 +406,23 @@ function OldBookings() {
     });
   };
 
-  const handleBulkUpdate = async () => {
-    if (!bulkStatus || selectedIds.size === 0) return;
+  const handleBulkApply = async () => {
+    if (!bulkValue || selectedIds.size === 0) return;
     setBulkLoading(true);
     try {
-      await bulkUpdateStatus({ recordIds: [...selectedIds], status: bulkStatus });
+      if (bulkField === 'status') {
+        // Status keeps its own endpoint so Agent-role limits still apply
+        await bulkUpdateStatus({ recordIds: [...selectedIds], status: bulkValue });
+      } else {
+        const v = bulkField === 'isPromoHunter' ? bulkValue === 'yes' : bulkValue;
+        await bulkEditBookings({ recordIds: [...selectedIds], fields: { [bulkField]: v } });
+      }
       setSelectedIds(new Set());
-      setBulkStatus('');
+      setBulkValue('');
       fetchBookings();
     } catch (err) {
-      console.error('Bulk update failed:', err.response?.data?.error || err.message);
+      console.error('Bulk edit failed:', err.response?.data?.error || err.message);
+      setError(err.response?.data?.error || 'Failed to bulk edit bookings');
     } finally {
       setBulkLoading(false);
     }
@@ -722,7 +741,7 @@ function OldBookings() {
                 <FiSearch size={14} />
                 <input
                   type="text"
-                  placeholder="Search name, phone, email, Instagram, agent..."
+                  placeholder="Search name, companion, phone, email, Instagram, agent..."
                   value={searchTerm}
                   onChange={handleSearch}
                   aria-label="Search bookings"
@@ -829,13 +848,7 @@ function OldBookings() {
                   >
                     <option value="">Select field...</option>
                     {FILTER_FIELDS.map(f => (
-                      <option
-                        key={f.key}
-                        value={f.key}
-                        disabled={activeFilters.some(af => af.field === f.key && af.id !== editingFilterId)}
-                      >
-                        {f.fieldLabel}{activeFilters.some(af => af.field === f.key && af.id !== editingFilterId) ? ' (active)' : ''}
-                      </option>
+                      <option key={f.key} value={f.key}>{f.fieldLabel}</option>
                     ))}
                   </select>
                 </div>
@@ -927,22 +940,63 @@ function OldBookings() {
 
         {error && <div className="modern-error-message">{error}</div>}
 
-        {/* Bulk action bar */}
+        {/* Bulk action bar — pick a field + value, applied to every selected row */}
         {selectedIds.size > 0 && (
           <div className="bulk-action-bar">
             <span className="bulk-selected-count">{selectedIds.size} selected</span>
             <select
               className="bulk-status-select"
-              value={bulkStatus}
-              onChange={e => setBulkStatus(e.target.value)}
+              value={bulkField}
+              onChange={e => { setBulkField(e.target.value); setBulkValue(''); }}
+              title="Field to bulk-edit"
             >
-              <option value="">Set status…</option>
-              {cfgOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
+              <option value="status">Status</option>
+              {user?.role === 'Admin' && (
+                <>
+                  <option value="branch">Branch</option>
+                  <option value="agent">Agent</option>
+                  <option value="treatment">Treatment</option>
+                  <option value="paymentMode">Payment Mode</option>
+                  <option value="followUpDate">Follow-up Date</option>
+                  <option value="isPromoHunter">Promo Hunter 🎯</option>
+                </>
+              )}
             </select>
+            {bulkField === 'followUpDate' ? (
+              <input
+                type="date"
+                className="bulk-status-select"
+                value={bulkValue}
+                onChange={e => setBulkValue(e.target.value)}
+              />
+            ) : bulkField === 'isPromoHunter' ? (
+              <select className="bulk-status-select" value={bulkValue} onChange={e => setBulkValue(e.target.value)}>
+                <option value="">Set value…</option>
+                <option value="yes">🎯 Yes — mark as promo hunter</option>
+                <option value="no">No — clear promo hunter</option>
+              </select>
+            ) : bulkField === 'paymentMode' ? (
+              <input
+                type="text"
+                className="bulk-status-select"
+                placeholder="Payment mode…"
+                value={bulkValue}
+                onChange={e => setBulkValue(e.target.value)}
+              />
+            ) : (
+              <select className="bulk-status-select" value={bulkValue} onChange={e => setBulkValue(e.target.value)}>
+                <option value="">Set value…</option>
+                {(bulkField === 'status' ? cfgOptions.statuses
+                  : bulkField === 'branch' ? cfgOptions.branches
+                  : bulkField === 'agent' ? cfgOptions.agents
+                  : cfgOptions.treatments
+                ).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
             <button
               className="btn btn-primary btn-sm"
-              onClick={handleBulkUpdate}
-              disabled={!bulkStatus || bulkLoading}
+              onClick={handleBulkApply}
+              disabled={!bulkValue || bulkLoading}
             >
               {bulkLoading ? 'Updating…' : 'Apply'}
             </button>
@@ -1034,6 +1088,7 @@ function OldBookings() {
                       <th className="validation-col-header">With Companion</th>
                       {user?.role === 'Admin' && <th className="validation-col-header">Underage Status</th>}
                       {user?.role === 'Admin' && <th className="validation-col-header">Double Booking Status</th>}
+                      {user?.role === 'Admin' && <th className="validation-col-header" title="Checked bookings are excluded from agent arrivals / arrival rate">Cancel Validation</th>}
                       {user?.role === 'Admin' && <th className="validation-col-header">Delete</th>}
                     </tr>
                   </thead>
@@ -1172,6 +1227,18 @@ function OldBookings() {
                               <option value="Pending">⏳ Pending</option>
                               <option value="Rejected">✕ Rejected</option>
                             </select>
+                          </td>
+                        )}
+                        {user?.role === 'Admin' && (
+                          <td className="validation-cell">
+                            <input
+                              type="checkbox"
+                              className="flag-checkbox"
+                              checked={!!booking.cancelValidation}
+                              disabled={!!validationUpdating[`${booking.rowNumber}-cancelValidation`]}
+                              onChange={() => handleStatusChange(booking, 'cancelValidation', !booking.cancelValidation)}
+                              title="Cancel Validation — checked bookings are excluded from agent arrivals / arrival rate"
+                            />
                           </td>
                         )}
                         {user?.role === 'Admin' && (

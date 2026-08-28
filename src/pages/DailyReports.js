@@ -8,6 +8,7 @@ import { FiRefreshCw, FiAlertCircle, FiX, FiMaximize2, FiPhone, FiMail, FiCamera
 import { useTheme } from '../context/ThemeContext';
 import ScrollableTable from '../components/ScrollableTable';
 import WidgetFilter, { widgetFiltersToParam, singleFilterToParam, EMPTY_WFILTER } from '../components/WidgetFilter';
+import SavedViewsMenu from '../components/SavedViewsMenu';
 import { useFilterOptions } from '../hooks/useFilterOptions';
 import './DailyReports.css';
 
@@ -296,6 +297,7 @@ const DailyReports = () => {
           </div>
           <div className="header-right">
             <span className="refresh-label">Updated {refreshAt.toLocaleTimeString()}</span>
+            <SavedViewsMenu page="daily-reports" filters={widgetFilters} onLoad={(f) => setWidgetFilters(f || {})} />
             <button className={`btn-icon-primary${snapshotMode ? ' active' : ''}`}
               onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }} title="Snapshot mode">
               <FiCamera size={16} />

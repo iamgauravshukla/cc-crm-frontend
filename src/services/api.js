@@ -50,6 +50,7 @@ export const getOldBookings     = (params)        => api.get('/bookings/old', { 
 export const getBookingById     = (id)            => api.get(`/bookings/${id}`);
 export const deleteBooking      = (rowNumber)     => api.delete(`/bookings/${rowNumber}`);
 export const bulkUpdateStatus   = (data)          => api.post('/bookings/bulk-status', data);
+export const bulkEditBookings   = (data)          => api.post('/bookings/bulk-edit', data);
 export const bulkDeleteBookings = (recordIds)     => api.post('/bookings/bulk-delete', { recordIds });
 export const getCustomerHistory = (query)         => api.get('/bookings/customer', { params: { query } });
 export const exportBookings     = (params)        => api.get('/bookings/export', { params, responseType: 'blob' });
@@ -64,13 +65,14 @@ export const importBookings     = (formData)      => api.post('/bookings/import'
   timeout: 5 * 60 * 1000, // large files can take a few minutes
 });
 
-// Saved Views APIs
-export const getSavedViews    = ()           => api.get('/saved-views');
+// Saved Views APIs — page scopes views per screen ('bookings' | 'daily-reports' | 'cc-report')
+export const getSavedViews    = (page)       => api.get('/saved-views', { params: page ? { page } : {} });
 export const createSavedView  = (data)       => api.post('/saved-views', data);
 export const deleteSavedView  = (id)         => api.delete(`/saved-views/${id}`);
 
 // Analytics APIs
 export const getAdPerformance = (params) => api.get('/analytics/ad-performance', { params });
+export const getAgentBookings = (params) => api.get('/analytics/agent-bookings', { params });
 export const getSalesReport = (params = {}) => api.get('/analytics/sales-report', { params });
 
 // Daily Reports API

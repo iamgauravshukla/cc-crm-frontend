@@ -2537,6 +2537,42 @@ body.sidebar-collapsed .main-content {
 .ap-am-legend-label { color: var(--text-primary); }
 .ap-am-legend-count { font-weight: 700; color: var(--text-primary); }
 
+/* Clickable legend + booking drill-down inside the per-agent modal */
+.ap-am-hint { margin-top: 6px; font-size: 0.75rem; color: var(--text-secondary); text-align: center; }
+.ap-am-legend-item--clickable { cursor: pointer; padding: 3px 8px; border-radius: 6px; border: 1px solid transparent; }
+.ap-am-legend-item--clickable:hover { background: var(--hover-bg, rgba(59,130,246,0.08)); }
+.ap-am-legend-item--clickable.active { border-color: var(--primary-color, #3b82f6); background: var(--hover-bg, rgba(59,130,246,0.08)); }
+.ap-am-drill {
+  margin-top: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.ap-am-drill-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+.ap-am-drill-count { font-size: 0.78rem; color: var(--text-secondary); }
+.ap-am-drill-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+}
+.ap-am-drill-close:hover { color: var(--text-primary); }
+.ap-am-drill-msg { padding: 16px; font-size: 0.85rem; color: var(--text-secondary); }
+.ap-am-drill-tablewrap { max-height: 300px; overflow: auto; }
+.ap-am-drill-tablewrap .bookings-table { min-width: 100%; }
+
 .arrivals-stats-row {
   display: flex;
   gap: 12px;

@@ -8,6 +8,7 @@ import Loader from '../components/Loader';
 import api, { getCCReportDrilldown } from '../services/api';
 import ScrollableTable from '../components/ScrollableTable';
 import WidgetFilter, { widgetFiltersToParam, singleFilterToParam, EMPTY_WFILTER } from '../components/WidgetFilter';
+import SavedViewsMenu from '../components/SavedViewsMenu';
 import { useFilterOptions } from '../hooks/useFilterOptions';
 import './CCBookingReport.css';
 
@@ -298,6 +299,7 @@ export default function CCBookingReport() {
           </div>
           <div className="ccr-header-actions">
             <span className="ccr-refresh-label">Updated {refreshAt.toLocaleTimeString()}</span>
+            <SavedViewsMenu page="cc-report" filters={widgetFilters} onLoad={(f) => setWidgetFilters(f || {})} />
             <button
               className={`ccr-btn${snapshotMode ? ' active' : ''}`}
               onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }}
