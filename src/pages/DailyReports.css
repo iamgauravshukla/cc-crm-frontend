@@ -17,6 +17,21 @@ body.sidebar-collapsed .daily-reports-container {
 @media (max-width: 768px) {
   .daily-reports-container { margin-left: 0; width: 100%; padding: 16px 12px; }
   body.sidebar-collapsed .daily-reports-container { margin-left: 0; width: 100%; }
+
+  /* Header stacks and actions wrap instead of overflowing */
+  .report-header { flex-direction: column; align-items: flex-start; gap: 12px; padding: 16px; }
+  .header-right { width: 100%; flex-wrap: wrap; }
+
+  /* KPI strip: two per row on phones */
+  .dr-kpi-strip { grid-template-columns: repeat(2, 1fr); }
+
+  /* Big-number cards scale down */
+  .dr-bignum { min-height: 140px; padding: 18px 14px; }
+  .dr-bignum-value { font-size: 44px; letter-spacing: -2px; }
+
+  /* Modal fills the phone screen */
+  .modal-overlay { padding: 8px; }
+  .modal-content.dr-modal-wide { width: 100%; max-width: 100%; max-height: 94vh; }
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */
@@ -169,6 +184,9 @@ body.sidebar-collapsed .daily-reports-container {
 
 .dr-expand-btn:hover { background: #579bfc; color: #fff; border-color: #579bfc; }
 
+/* Big-number cards also carry a filter icon in the corner — keep the expand button beside it */
+.dr-bignum .dr-expand-btn { top: 14px; right: 52px; }
+
 /* ── No data placeholder ─────────────────────────────────────────────────────── */
 .dr-nodata {
   display: flex;
@@ -257,6 +275,12 @@ body.sidebar-collapsed .daily-reports-container {
   box-shadow: 0 24px 64px rgba(0,0,0,0.35);
   border: 1px solid var(--border-primary);
   overflow: hidden;
+}
+
+/* Expanded bookings modal — 90% of the viewport so wide tables fit (team request) */
+.modal-content.dr-modal-wide {
+  width: 90%;
+  max-width: 90%;
 }
 
 .modal-header {

@@ -225,7 +225,7 @@ const DailyReports = () => {
             <table className="bookings-table">
               <thead>
                 <tr>
-                  <th>Name</th><th>Date</th><th>Treatment</th><th>Status</th>
+                  <th>Name</th><th>Age</th><th>Date</th><th>Treatment</th><th>Status</th>
                   <th>Contact</th><th>Price</th><th>Agent</th>
                 </tr>
               </thead>
@@ -233,6 +233,7 @@ const DailyReports = () => {
                 {drillDown.bookings.map((b, i) => (
                   <tr key={i}>
                     <td><strong>{b.firstName} {b.lastName}</strong></td>
+                    <td>{b.age ?? '-'}</td>
                     <td style={{ whiteSpace:'nowrap' }}>{b.date}</td>
                     <td>{b.treatment}</td>
                     <td><span className={`status-badge status-${(b.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{b.status}</span></td>
@@ -477,7 +478,7 @@ const DailyReports = () => {
         {/* Full-page Detail Modal */}
         {expandedSection && (
           <div className="modal-overlay" onClick={() => { setExpandedSection(null); setModalBookings([]); }}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-content dr-modal-wide" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>{MODAL_LABELS[expandedSection] || 'Bookings'}</h2>
                 <button className="modal-close-btn" onClick={() => { setExpandedSection(null); setModalBookings([]); }}>
@@ -492,12 +493,13 @@ const DailyReports = () => {
                 <ScrollableTable className="bookings-table-wrapper">
                   <table className="bookings-table">
                     <thead>
-                      <tr><th>Name</th><th>Branch</th><th>Date</th><th>Treatment</th><th>Contact</th><th>Status</th><th>Price</th><th>Agent</th></tr>
+                      <tr><th>Name</th><th>Age</th><th>Branch</th><th>Date</th><th>Treatment</th><th>Contact</th><th>Status</th><th>Price</th><th>Agent</th></tr>
                     </thead>
                     <tbody>
                       {modalBookings.map((b, i) => (
                         <tr key={i}>
                           <td><strong>{b.firstName} {b.lastName}</strong></td>
+                          <td>{b.age ?? '-'}</td>
                           <td>{b.branch}</td><td>{b.date}</td><td>{b.treatment}</td>
                           <td className="contact-cell">
                             <div className="contact-info">

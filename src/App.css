@@ -64,10 +64,10 @@ html {
   --bg-secondary: #292d4c;
   --bg-tertiary: #373b5c;
 
-  /* Text Colors */
-  --text-primary: #c3c6d4;
-  --text-secondary: #9699a6;
-  --text-tertiary: #6e7491;
+  /* Text Colors — brightened for readability on the indigo backgrounds */
+  --text-primary: #e4e6f1;
+  --text-secondary: #a9adc0;
+  --text-tertiary: #7c81a0;
 
   /* Border Colors */
   --border-primary: #3e4164;
@@ -87,8 +87,8 @@ html {
 
   /* Table Colors */
   --table-header-bg: #1c1f3b;
-  --table-header-text: #c3c6d4;
-  --table-row-hover: #373b5c;
+  --table-header-text: #e4e6f1;
+  --table-row-hover: #31354e; /* subtle neutral lift — keeps hovered-row text readable */
   --table-border: #3e4164;
 
   /* Primary accent */
@@ -1229,6 +1229,11 @@ body.sidebar-collapsed .main-content {
 
 .bookings-table tbody tr:hover {
   background-color: var(--table-row-hover);
+}
+
+/* Hovered rows lift their text to full-contrast so no cell goes grey-on-blue */
+.bookings-table tbody tr:hover td {
+  color: var(--text-primary);
 }
 
 .status-badge {

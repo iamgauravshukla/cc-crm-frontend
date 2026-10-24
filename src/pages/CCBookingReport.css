@@ -17,6 +17,16 @@ body.sidebar-collapsed .ccr-container {
 @media (max-width: 768px) {
   .ccr-container { margin-left: 0; width: 100%; padding: 16px 12px; }
   body.sidebar-collapsed .ccr-container { margin-left: 0; width: 100%; }
+
+  /* Header stacks and actions wrap instead of overflowing */
+  .ccr-header { flex-direction: column; align-items: flex-start; gap: 12px; padding: 16px; }
+  .ccr-header-actions { width: 100%; flex-wrap: wrap; }
+
+  /* Big-number cards scale down */
+  .ccr-bignum-card { min-height: 150px; }
+  .ccr-bignum-top { font-size: 44px; letter-spacing: -2px; }
+  .ccr-ots-num { font-size: 44px; }
+  .ccr-bignum-split { flex-wrap: wrap; }
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */

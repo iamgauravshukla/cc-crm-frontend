@@ -252,7 +252,7 @@ export default function CCBookingReport() {
             <table className="bookings-table">
               <thead>
                 <tr>
-                  <th>Name</th><th>Branch</th><th>Date</th><th>Treatment</th>
+                  <th>Name</th><th>Age</th><th>Branch</th><th>Date</th><th>Treatment</th>
                   <th>Status</th><th>Contact</th><th>Price</th><th>Agent</th>
                 </tr>
               </thead>
@@ -260,6 +260,7 @@ export default function CCBookingReport() {
                 {drillDown.bookings.map((b, idx) => (
                   <tr key={idx}>
                     <td><strong>{b.firstName} {b.lastName}</strong></td>
+                    <td>{b.age ?? '-'}</td>
                     <td>{b.branch}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>{b.date}</td>
                     <td>{b.treatment}</td>
