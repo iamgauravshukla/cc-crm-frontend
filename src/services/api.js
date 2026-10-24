@@ -73,6 +73,7 @@ export const deleteSavedView  = (id)         => api.delete(`/saved-views/${id}`)
 // Analytics APIs
 export const getAdPerformance = (params) => api.get('/analytics/ad-performance', { params });
 export const getAgentBookings = (params) => api.get('/analytics/agent-bookings', { params });
+export const getSalesBookings = (params) => api.get('/analytics/sales-bookings', { params });
 export const getSalesReport = (params = {}) => api.get('/analytics/sales-report', { params });
 
 // Daily Reports API

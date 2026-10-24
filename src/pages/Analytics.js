@@ -6,52 +6,37 @@ import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import QuickFilterBar from '../components/QuickFilterBar';
 import { useTheme } from '../context/ThemeContext';
+import { useConfig } from '../hooks/useConfig';
 import { FiTrendingUp, FiDollarSign, FiBarChart2, FiUsers, FiRepeat, FiHome, FiPackage, FiCreditCard, FiUserCheck, FiPieChart, FiCalendar, FiTarget, FiAward, FiActivity, FiFilter } from 'react-icons/fi';
 import './Analytics.css';
 
-const BRANCHES = [
-  'All',
-  'AI SKIN',
-  'CENTRIS',
-  'DNA MANILA',
-  'GENEVA',
-  'GLORIETTA',
-  'HERA',
-  'LIONESSE',
-  'LUMIA',
-  'PARIS',
-  'SM NORTH',
-  'VENICE',
-  'STA LUCIA',
-  'FELIZ',
-  'ESTANCIA'
-];
-
-const ANALYTICS_FILTER_FIELDS = [
-  {
-    key: 'branch',
-    fieldLabel: 'Branch',
-    type: 'select',
-    multiSelect: true,
-    options: BRANCHES.filter(b => b !== 'All'),
-  },
-  {
-    key: 'dateRange',
-    fieldLabel: 'Date Range',
-    type: 'datepreset',
-    options: [
-      { value: 'today',   label: 'Today' },
-      { value: 'week',    label: 'Last 7 Days' },
-      { value: 'month',   label: 'Last Month' },
-      { value: 'quarter', label: 'Last Quarter' },
-      { value: 'year',    label: 'Last Year' },
-      { value: 'custom',  label: 'Custom Range' },
-    ],
-  },
-];
-
 function Analytics() {
   const navigate = useNavigate();
+
+  // Branch options come from the Config page so new branches (e.g. TBF) appear automatically
+  const { options: cfgOptions } = useConfig();
+  const ANALYTICS_FILTER_FIELDS = [
+    {
+      key: 'branch',
+      fieldLabel: 'Branch',
+      type: 'select',
+      multiSelect: true,
+      options: cfgOptions.branches,
+    },
+    {
+      key: 'dateRange',
+      fieldLabel: 'Date Range',
+      type: 'datepreset',
+      options: [
+        { value: 'today',   label: 'Today' },
+        { value: 'week',    label: 'Last 7 Days' },
+        { value: 'month',   label: 'Last Month' },
+        { value: 'quarter', label: 'Last Quarter' },
+        { value: 'year',    label: 'Last Year' },
+        { value: 'custom',  label: 'Custom Range' },
+      ],
+    },
+  ];
 
   // Quick-filter state — defaults to All branches, Last Year
   const [activeFilters, setActiveFilters] = useState([

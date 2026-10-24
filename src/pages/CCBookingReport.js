@@ -10,13 +10,8 @@ import ScrollableTable from '../components/ScrollableTable';
 import WidgetFilter, { widgetFiltersToParam, singleFilterToParam, EMPTY_WFILTER } from '../components/WidgetFilter';
 import SavedViewsMenu from '../components/SavedViewsMenu';
 import { useFilterOptions } from '../hooks/useFilterOptions';
+import { branchColor } from '../utils/branchColors';
 import './CCBookingReport.css';
-
-const CHART_COLORS = [
-  '#8b5cf6','#ec4899','#f59e0b','#10b981','#3b82f6',
-  '#ef4444','#06b6d4','#84cc16','#f97316','#a78bfa',
-  '#fb7185','#34d399','#60a5fa','#fbbf24','#c084fc'
-];
 
 const formatNum = (n) => Number(n || 0).toLocaleString();
 
@@ -135,7 +130,7 @@ export default function CCBookingReport() {
     return {
       series: [{ name: label, data: sorted.map(([,v]) => v.count) }],
       categories: sorted.map(([k]) => k),
-      colors: sorted.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+      colors: sorted.map(([k], i) => branchColor(k, i)),
     };
   };
 
@@ -153,9 +148,10 @@ export default function CCBookingReport() {
     </div>
   );
 
-  // ── Big-number card ───────────────────────────────────────────────────────
-  const BigNum = ({ id, label, total, left, leftLabel, right, rightLabel, color = '#3b82f6' }) => (
+  // ── Big-number card — filterEl renders the same per-widget filter as the section's chart
+  const BigNum = ({ id, label, total, left, leftLabel, right, rightLabel, color = '#3b82f6', filterEl }) => (
     <Snap id={id} className="ccr-bignum-card">
+      {filterEl && <div className="wf-corner">{filterEl}</div>}
       <div className="ccr-bignum-top">{formatNum(total)}</div>
       <div className="ccr-bignum-title">{label}</div>
       <div className="ccr-bignum-split">
@@ -191,7 +187,7 @@ export default function CCBookingReport() {
   const next7Chart     = barSeries(totalSchedulesNext7.byBranch,    'Next 7 Days');
   const otsChart       = barSeries(totalOTS.byBranch,               'OTS');
   const cancelChart    = barSeries(cancellationsToday.byBranch,     'Cancellations');
-  const cancelColors   = cancelChart.categories.map((_, i) => ['#ef4444','#f87171','#dc2626','#fca5a5','#b91c1c'][i % 5]);
+  const cancelColors   = cancelChart.colors;
 
   const payModes = ['Cash', 'Debit', 'Credit'];
   const payModeLabels = ['Cash', 'Debit', 'Credit'];
@@ -369,7 +365,8 @@ export default function CCBookingReport() {
             </Snap>
             <BigNum
               id="big-today"
-              label="Total Schedules Today"
+              filterEl={<WidgetFilter options={filterOptions} label="Schedules Today" value={widgetFilters.today || EMPTY_WFILTER} onApply={v => setWidgetFilter('today', v)} />}
+                            label="Total Schedules Today"
               total={totalSchedulesToday.total}
               left={totalSchedulesToday.ots}         leftLabel="OTS"
               right={totalSchedulesToday.additional}  rightLabel="Additional"
@@ -392,7 +389,8 @@ export default function CCBookingReport() {
             </Snap>
             <BigNum
               id="big-arrivals"
-              label="Total Arrivals Today"
+              filterEl={<WidgetFilter options={filterOptions} label="Arrivals" value={widgetFilters.arrivals || EMPTY_WFILTER} onApply={v => setWidgetFilter('arrivals', v)} />}
+                            label="Total Arrivals Today"
               total={totalArrivalsToday.total}
               left={totalArrivalsToday.otsArrivals}        leftLabel="Arrived OTS"
               right={totalArrivalsToday.additionalArrivals} rightLabel="Additional"
@@ -415,7 +413,8 @@ export default function CCBookingReport() {
             </Snap>
             <BigNum
               id="big-tomorrow"
-              label="Total Schedules for Tomorrow"
+              filterEl={<WidgetFilter options={filterOptions} label="Sched Tomorrow" value={widgetFilters.tomorrow || EMPTY_WFILTER} onApply={v => setWidgetFilter('tomorrow', v)} />}
+                            label="Total Schedules for Tomorrow"
               total={totalSchedulesTomorrow.total}
               left={totalSchedulesTomorrow.otsTomorrow}        leftLabel="OTS for Tomorrow"
               right={totalSchedulesTomorrow.additionalTomorrow} rightLabel="Additional"
@@ -468,7 +467,8 @@ export default function CCBookingReport() {
             </Snap>
             <BigNum
               id="big-next7"
-              label="Total Schedules for the Next 7 Days"
+              filterEl={<WidgetFilter options={filterOptions} label="Next 7 Days" value={widgetFilters.next7 || EMPTY_WFILTER} onApply={v => setWidgetFilter('next7', v)} />}
+                            label="Total Schedules for the Next 7 Days"
               total={totalSchedulesNext7.total}
               left={totalSchedulesNext7.otsNext7}        leftLabel="OTS Next 7 Days"
               right={totalSchedulesNext7.additionalNext7} rightLabel="Additional"
@@ -490,6 +490,7 @@ export default function CCBookingReport() {
               />
             </Snap>
             <Snap id="big-ots" className="ccr-bignum-card ccr-ots-total">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Total OTS" value={widgetFilters.ots || EMPTY_WFILTER} onApply={v => setWidgetFilter('ots', v)} /></div>
               <div className="ccr-ots-label">Total OTS</div>
               <div className="ccr-ots-num">{formatNum(totalOTS.total)}</div>
               <div className="ccr-ots-sub">Today + Tomorrow + Next 7 Days</div>
@@ -510,6 +511,7 @@ export default function CCBookingReport() {
               />
             </Snap>
             <Snap id="big-cancellations" className="ccr-bignum-card ccr-ots-total">
+              <div className="wf-corner"><WidgetFilter options={filterOptions} label="Cancellations" value={widgetFilters.cancellations || EMPTY_WFILTER} onApply={v => setWidgetFilter('cancellations', v)} /></div>
               <div className="ccr-ots-label">Cancellations Today</div>
               <div className="ccr-ots-num" style={{ color: '#ef4444' }}>{formatNum(cancellationsToday.total)}</div>
               <div className="ccr-ots-sub">Status = Cancelled · Booked on = Today</div>

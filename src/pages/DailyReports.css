@@ -127,6 +127,7 @@ body.sidebar-collapsed .daily-reports-container {
   gap: 12px;
   min-height: 200px;
   padding: 24px 20px;
+  position: relative; /* anchors the .wf-corner filter icon */
 }
 
 .dr-bignum-label {

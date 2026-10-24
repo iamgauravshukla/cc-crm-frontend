@@ -1,31 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiTrendingUp, FiCalendar, FiBarChart2, FiArrowUp, FiArrowDown, FiUsers, FiInfo } from 'react-icons/fi';
+import { FiTrendingUp, FiCalendar, FiBarChart2, FiArrowUp, FiArrowDown, FiUsers, FiInfo, FiX, FiChevronDown } from 'react-icons/fi';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import ReactApexChart from 'react-apexcharts';
 import { useTheme } from '../context/ThemeContext';
-import { getSalesReport } from '../services/api';
+import { getSalesReport, getSalesBookings } from '../services/api';
 import QuickFilterBar from '../components/QuickFilterBar';
+import { useConfig } from '../hooks/useConfig';
+import { branchColor } from '../utils/branchColors';
 import './SalesReport.css';
-
-const SALES_FILTER_FIELDS = [
-  {
-    key: 'branch',
-    fieldLabel: 'Branch',
-    type: 'select',
-    multiSelect: true,
-    options: [
-      'AI SKIN', 'CENTRIS', 'DNA MANILA', 'GENEVA', 'GLORIETTA',
-      'HERA', 'LIONESSE', 'LUMIA', 'PARIS', 'SM NORTH',
-      'VENICE', 'STA LUCIA', 'FELIZ', 'ESTANCIA',
-    ],
-  },
-  {
-    key: 'dateRange',
-    fieldLabel: 'Date Range',
-    type: 'daterange',
-  },
-];
 
 const initDefaultDateRange = () => {
   const now = new Date();
@@ -45,12 +28,24 @@ const SalesReport = () => {
   const [salesData, setSalesData]     = useState(null);
   const [activeFilters, setActiveFilters] = useState(initDefaultDateRange);
   const [openTooltipId, setOpenTooltipId] = useState(null);
+  // Bookings behind one branch bar of the "By Branch" chart
+  const [salesDrill, setSalesDrill]   = useState(null); // { branch, bookings, loading }
 
-  const BRANCHES = [
-    'all',
-    'AI SKIN', 'CENTRIS', 'DNA MANILA', 'GENEVA', 'GLORIETTA',
-    'HERA', 'LIONESSE', 'LUMIA', 'PARIS', 'SM NORTH',
-    'VENICE', 'STA LUCIA', 'FELIZ', 'ESTANCIA'
+  // Branch options come from the Config page so new branches (e.g. TBF) appear automatically
+  const { options: cfgOptions } = useConfig();
+  const SALES_FILTER_FIELDS = [
+    {
+      key: 'branch',
+      fieldLabel: 'Branch',
+      type: 'select',
+      multiSelect: true,
+      options: cfgOptions.branches,
+    },
+    {
+      key: 'dateRange',
+      fieldLabel: 'Date Range',
+      type: 'daterange',
+    },
   ];
 
   // Derive API params from active filters
@@ -76,10 +71,22 @@ const SalesReport = () => {
 
   useEffect(() => {
     fetchSalesReport();
+    setSalesDrill(null); // range/branch changed → stale drill-down
   }, [fetchSalesReport]);
 
-  // eslint-disable-next-line -- BRANCHES is a static list used below in JSX only
-  void BRANCHES;
+  // Click a branch bar → list the sale bookings behind that branch's total
+  const handleSalesBarClick = async (branch) => {
+    if (salesDrill?.branch === branch) { setSalesDrill(null); return; } // toggle off
+    setSalesDrill({ branch, bookings: [], loading: true });
+    try {
+      const res = await getSalesBookings({ branch, startDate: appliedStartDate, endDate: appliedEndDate });
+      setSalesDrill(prev => prev?.branch === branch
+        ? { branch, bookings: res.data.bookings || [], loading: false }
+        : prev);
+    } catch {
+      setSalesDrill(prev => prev?.branch === branch ? { branch, bookings: [], loading: false } : prev);
+    }
+  };
 
   const getChartTheme = () => ({
     theme: {
@@ -233,16 +240,26 @@ const SalesReport = () => {
     chart: {
       ...getChartTheme().chart,
       type: 'bar',
-      height: '100%'
+      height: '100%',
+      events: {
+        dataPointSelection: (_ev, _ctx, config) => {
+          const branch = rangeSales.byBranch[config.dataPointIndex]?.branch;
+          if (branch) handleSalesBarClick(branch);
+        }
+      }
     },
     plotOptions: {
       bar: {
         borderRadius: 6,
+        distributed: true,
+        cursor: 'pointer',
         dataLabels: {
           position: 'top'
         }
       }
     },
+    legend: { show: false },
+    states: { active: { filter: { type: 'darken', value: 0.7 } } },
     dataLabels: {
       enabled: true,
       formatter: (val) => `₱${val.toLocaleString()}`,
@@ -268,7 +285,7 @@ const SalesReport = () => {
         }
       }
     },
-    colors: ['#10b981'],
+    colors: rangeSales.byBranch.map((b, i) => branchColor(b.branch, i)),
     title: {
       text: 'By Branch',
       align: 'left',
@@ -350,7 +367,7 @@ const SalesReport = () => {
       height: '100%'
     },
     labels: rangeSales.byBranch.map(b => b.branch),
-    colors: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'],
+    colors: rangeSales.byBranch.map((b, i) => branchColor(b.branch, i)),
     legend: {
       position: 'bottom',
       labels: {
@@ -843,6 +860,55 @@ const SalesReport = () => {
                   <div className="no-data">No sales data for selected range</div>
                 )}
               </div>
+              {/* Booking breakdown for the clicked branch bar */}
+              {salesDrill && (
+                <div className="dr-drilldown">
+                  <div className="dr-drilldown-header">
+                    <div className="dr-drilldown-title">
+                      <FiChevronDown size={16} />
+                      <strong>{salesDrill.branch}</strong>
+                      {!salesDrill.loading && (
+                        <span className="dr-drilldown-count">
+                          {salesDrill.bookings.length} booking{salesDrill.bookings.length !== 1 ? 's' : ''} ·
+                          {' '}₱{salesDrill.bookings.reduce((s, b) => s + (b.totalPrice || 0), 0).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    <button className="dr-drilldown-close" onClick={() => setSalesDrill(null)} title="Close">
+                      <FiX size={15} />
+                    </button>
+                  </div>
+                  {salesDrill.loading ? (
+                    <div className="dr-drilldown-msg">Loading bookings…</div>
+                  ) : salesDrill.bookings.length === 0 ? (
+                    <div className="dr-drilldown-msg">No sale bookings found for {salesDrill.branch} in this range</div>
+                  ) : (
+                    <div className="dr-drilldown-table-wrap" style={{ maxHeight: 320, overflow: 'auto' }}>
+                      <table className="bookings-table">
+                        <thead>
+                          <tr>
+                            <th>Name</th><th>Date</th><th>Treatment</th><th>Status</th>
+                            <th>Price</th><th>Payment</th><th>Agent</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {salesDrill.bookings.map((b) => (
+                            <tr key={b.recordId}>
+                              <td><strong>{b.firstName} {b.lastName}</strong>{b.isPromoHunter && <span title="Promo Hunter"> 🎯</span>}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{b.date}{b.time ? ` · ${b.time}` : ''}</td>
+                              <td>{b.treatment}</td>
+                              <td><span className={`status-badge status-${(b.status || '').toLowerCase().replace(/\s+/g, '-')}`}>{b.status}</span></td>
+                              <td>₱{Number(b.totalPrice || 0).toLocaleString()}</td>
+                              <td>{b.paymentMode}</td>
+                              <td>{b.agent}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* First & Second Half Comparison */}

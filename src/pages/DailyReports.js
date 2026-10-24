@@ -10,13 +10,8 @@ import ScrollableTable from '../components/ScrollableTable';
 import WidgetFilter, { widgetFiltersToParam, singleFilterToParam, EMPTY_WFILTER } from '../components/WidgetFilter';
 import SavedViewsMenu from '../components/SavedViewsMenu';
 import { useFilterOptions } from '../hooks/useFilterOptions';
+import { branchColor } from '../utils/branchColors';
 import './DailyReports.css';
-
-const BRANCH_COLORS = [
-  '#ec4899','#f97316','#a16207','#22c55e','#06b6d4',
-  '#f59e0b','#8b5cf6','#3b82f6','#10b981','#e11d48',
-  '#14b8a6','#84cc16','#6366f1','#f43f5e','#0ea5e9'
-];
 
 const DailyReports = () => {
   const [reports, setReports]     = useState(null);
@@ -167,7 +162,7 @@ const DailyReports = () => {
     title: { text: title, style: { fontSize:'13px', fontWeight:600, color: isDark ? '#e2e8f0' : '#1e293b' } },
     plotOptions: { bar: { borderRadius:5, distributed:true, columnWidth:'55%', dataLabels:{ position:'top' }, cursor: 'pointer' } },
     dataLabels: { enabled:true, offsetY:-18, style:{ fontSize:'12px', fontWeight:700, colors:[isDark ? '#e2e8f0' : '#1e293b'] } },
-    colors: data.map((_, i) => BRANCH_COLORS[i % BRANCH_COLORS.length]),
+    colors: data.map((d, i) => branchColor(d.branch, i)),
     legend: { show: false },
     grid: { borderColor: isDark ? '#334155' : '#e2e8f0', strokeDashArray: 4 },
     xaxis: { categories: data.map(d => d.branch), labels: { rotate:-40, style:{ colors: isDark ? '#94a3b8' : '#64748b', fontSize:'11px' } } },
@@ -190,9 +185,10 @@ const DailyReports = () => {
     </div>
   );
 
-  // Big number card
-  const BigNum = ({ id, value, label, color='#3b82f6', onExpand }) => (
+  // Big number card — filterEl renders the same per-widget filter as the section's chart
+  const BigNum = ({ id, value, label, color='#3b82f6', onExpand, filterEl }) => (
     <Snap id={id} className="dr-bignum">
+      {filterEl && <div className="wf-corner">{filterEl}</div>}
       <div className="dr-bignum-label">{label}</div>
       <div className="dr-bignum-value" style={{ color }}>{Number(value||0).toLocaleString()}</div>
       {onExpand && (
@@ -375,7 +371,8 @@ const DailyReports = () => {
                 ? <ReactApexChart type="bar" height={320} options={barOptions(otsData,'OTS per Branch','ots',getOTSBookings)} series={barSeries(otsData,'OTS')} />
                 : <NoData msg="No OTS bookings today" />}
             </Snap>
-            <BigNum id="big-ots" value={reports?.otsBookings?.count} label="OTS" color="#ec4899"
+            <BigNum id="big-ots" filterEl={<WidgetFilter options={filterOptions} label="OTS" value={widgetFilters['ots'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('ots', v)} />}
+              value={reports?.otsBookings?.count} label="OTS" color="#ec4899"
               onExpand={() => handleExpandSection('ots')} />
           </div>
           <DrillDownPanel chartKey="ots" />
@@ -390,7 +387,8 @@ const DailyReports = () => {
                 ? <ReactApexChart type="bar" height={320} options={barOptions(overallData,'OVERALL per Branch','overall',getOverallBookings)} series={barSeries(overallData,'Overall')} />
                 : <NoData msg="No overall bookings" />}
             </Snap>
-            <BigNum id="big-overall" value={reports?.overallBookings?.count} label="OVERALL" color="#3b82f6"
+            <BigNum id="big-overall" filterEl={<WidgetFilter options={filterOptions} label="Overall" value={widgetFilters['overall'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('overall', v)} />}
+              value={reports?.overallBookings?.count} label="OVERALL" color="#3b82f6"
               onExpand={() => handleExpandSection('overall')} />
           </div>
           <DrillDownPanel chartKey="overall" />
@@ -405,7 +403,8 @@ const DailyReports = () => {
                 ? <ReactApexChart type="bar" height={320} options={barOptions(arrivalsData,'Arrivals Today per Branch','arrivals-today',getArrivalsToday)} series={barSeries(arrivalsData,'Arrivals')} />
                 : <NoData msg="No arrivals today" />}
             </Snap>
-            <BigNum id="big-arrivals" value={reports?.arrivalsToday?.count} label="ARRIVALS TODAY" color="#10b981"
+            <BigNum id="big-arrivals" filterEl={<WidgetFilter options={filterOptions} label="Arrivals Today" value={widgetFilters['arrivals-today'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('arrivals-today', v)} />}
+              value={reports?.arrivalsToday?.count} label="ARRIVALS TODAY" color="#10b981"
               onExpand={() => handleExpandSection('arrivals-today')} />
           </div>
           <DrillDownPanel chartKey="arrivals-today" />
@@ -420,7 +419,8 @@ const DailyReports = () => {
                 ? <ReactApexChart type="bar" height={320} options={barOptions(tomorrowData,'Booked Tomorrow per Branch','tomorrow',getTomorrowBookings)} series={barSeries(tomorrowData,'Tomorrow')} />
                 : <NoData msg="No appointments tomorrow" />}
             </Snap>
-            <BigNum id="big-tomorrow" value={tomorrowTotal} label="Total Booked Tomorrow" color="#f97316"
+            <BigNum id="big-tomorrow" filterEl={<WidgetFilter options={filterOptions} label="Booked Tomorrow" value={widgetFilters['tomorrow'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('tomorrow', v)} />}
+              value={tomorrowTotal} label="Total Booked Tomorrow" color="#f97316"
               onExpand={() => handleExpandSection('tomorrow')} />
           </div>
           <DrillDownPanel chartKey="tomorrow" />
@@ -435,7 +435,8 @@ const DailyReports = () => {
                 ? <ReactApexChart type="bar" height={320} options={barOptions(next7Data,'Booked Next 7 Days per Branch','next7days',getNext7DaysBookings)} series={barSeries(next7Data,'Next 7 Days')} />
                 : <NoData msg="No bookings in next 7 days" />}
             </Snap>
-            <BigNum id="big-next7" value={next7Total} label="Total Booked Next 7 Days" color="#8b5cf6"
+            <BigNum id="big-next7" filterEl={<WidgetFilter options={filterOptions} label="Next 7 Days" value={widgetFilters['next7days'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('next7days', v)} />}
+              value={next7Total} label="Total Booked Next 7 Days" color="#8b5cf6"
               onExpand={() => handleExpandSection('next7days')} />
           </div>
           <DrillDownPanel chartKey="next7days" />
@@ -450,7 +451,8 @@ const DailyReports = () => {
                 ? <ReactApexChart type="bar" height={320} options={barOptions(cancelData,'Cancellations per Branch','cancellations',getCancellations)} series={barSeries(cancelData,'Cancellations')} />
                 : <NoData msg="No cancellations today" />}
             </Snap>
-            <BigNum id="big-cancellations" value={reports?.cancellations?.count} label="Total Cancellations" color="#ef4444"
+            <BigNum id="big-cancellations" filterEl={<WidgetFilter options={filterOptions} label="Cancellations" value={widgetFilters['cancellations'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('cancellations', v)} />}
+              value={reports?.cancellations?.count} label="Total Cancellations" color="#ef4444"
               onExpand={() => handleExpandSection('cancellations')} />
           </div>
           <DrillDownPanel chartKey="cancellations" />
@@ -465,7 +467,8 @@ const DailyReports = () => {
                 ? <ReactApexChart type="bar" height={320} options={barOptions(overallTomData,'Overall Bookings Tomorrow','overall-tomorrow',getTomorrowSummary)} series={barSeries(overallTomData,'Tomorrow')} />
                 : <NoData msg="No bookings tomorrow" />}
             </Snap>
-            <BigNum id="big-overall-tomorrow" value={overallTomTotal} label="Overall Bookings Tomorrow" color="#06b6d4"
+            <BigNum id="big-overall-tomorrow" filterEl={<WidgetFilter options={filterOptions} label="Overall Tomorrow" value={widgetFilters['overall-tomorrow'] || EMPTY_WFILTER} onApply={v => setWidgetFilter('overall-tomorrow', v)} />}
+              value={overallTomTotal} label="Overall Bookings Tomorrow" color="#06b6d4"
               onExpand={() => handleExpandSection('tomorrow-summary')} />
           </div>
           <DrillDownPanel chartKey="overall-tomorrow" />

@@ -7,6 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 import { getAdPerformance } from '../services/api';
 import { FiSearch, FiTrendingUp, FiDollarSign, FiMapPin, FiTag } from 'react-icons/fi';
 import QuickFilterBar from '../components/QuickFilterBar';
+import { useConfig } from '../hooks/useConfig';
 
 function AdPerformance() {
   const navigate = useNavigate();
@@ -24,17 +25,16 @@ function AdPerformance() {
   const [adIdSearch, setAdIdSearch] = useState('');
   const itemsPerPage = 12;
 
+  // Branch options come from the Config page so new branches (e.g. TBF) appear automatically
+  const { options: cfgOptions } = useConfig();
+
   const AD_FILTER_FIELDS = [
     {
       key: 'branch',
       fieldLabel: 'Wellness Center',
       type: 'select',
       multiSelect: true,
-      options: [
-        'AI SKIN', 'CENTRIS', 'DNA MANILA', 'GENEVA', 'GLORIETTA',
-        'HERA', 'LIONESSE', 'LUMIA', 'PARIS', 'SM NORTH',
-        'VENICE', 'STA LUCIA', 'FELIZ', 'ESTANCIA',
-      ],
+      options: cfgOptions.branches,
     },
     {
       key: 'dateRange',

@@ -141,6 +141,7 @@ body.sidebar-collapsed .ccr-container {
   text-align: center;
   gap: 14px;
   min-height: 220px;
+  position: relative; /* anchors the .wf-corner filter icon */
 }
 
 .ccr-bignum-top {
