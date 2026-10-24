@@ -42,6 +42,7 @@ html {
   --table-header-text: #ffffff;
   --table-row-hover: #f0f2f8;
   --table-border: #e6e9ef;
+  --hover-bg: #f1f5f9;
 
   /* Primary accent */
   --primary-color: #0073ea;
@@ -90,6 +91,7 @@ html {
   --table-header-text: #e4e6f1;
   --table-row-hover: #31354e; /* subtle neutral lift — keeps hovered-row text readable */
   --table-border: #3e4164;
+  --hover-bg: #31354e;
 
   /* Primary accent */
   --primary-color: #579bfc;
@@ -5121,11 +5123,20 @@ body.sidebar-collapsed .main-content {
   padding: 10px 16px;
   background: var(--accent-color, #579bfc);
   color: #fff;
-  border-radius: 8px;
+  border-radius: 10px;
   margin-bottom: 12px;
   flex-wrap: wrap;
+  box-shadow: 0 4px 14px rgba(0, 115, 234, 0.25);
 }
-.bulk-selected-count { font-weight: 600; font-size: 14px; margin-right: 4px; }
+/* The global .btn is full-width (auth forms); inside the bar buttons size to content */
+.bulk-action-bar .btn {
+  width: auto;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+/* Push the destructive + clear actions to the right edge */
+.bulk-action-bar .btn-danger { margin-left: auto; }
+.bulk-selected-count { font-weight: 600; font-size: 14px; margin-right: 4px; white-space: nowrap; }
 .bulk-status-select {
   padding: 6px 10px;
   border: 1px solid rgba(255,255,255,.4);

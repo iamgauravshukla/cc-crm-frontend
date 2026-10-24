@@ -93,6 +93,7 @@ export const getCallLeads = (params) => api.get('/leads/call', { params });
 export const getBookingLeads = (params) => api.get('/leads/booking', { params });
 export const getLeadCenters = () => api.get('/leads/centers');
 export const updateLead = (type, rowIndex, data) => api.patch(`/leads/${type}/${rowIndex}`, data);
+export const deleteLeads = (type, ids) => api.post(`/leads/${type}/bulk-delete`, { ids });
 
 // Config (dropdown options) APIs
 export const getConfig           = ()         => api.get('/config');

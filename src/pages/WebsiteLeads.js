@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiSearch, FiRefreshCw, FiPhone, FiMail, FiCalendar, FiUser, FiMessageSquare, FiEdit2, FiX, FiCheck } from 'react-icons/fi';
-import { getCallLeads, getBookingLeads, getLeadCenters, updateLead } from '../services/api';
+import { FiSearch, FiRefreshCw, FiPhone, FiMail, FiCalendar, FiUser, FiMessageSquare, FiEdit2, FiX, FiCheck, FiTrash2 } from 'react-icons/fi';
+import { getCallLeads, getBookingLeads, getLeadCenters, updateLead, deleteLeads } from '../services/api';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import './WebsiteLeads.css';
@@ -28,6 +28,12 @@ function WebsiteLeads() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
 
+  // Multi-select + delete (Admin only)
+  const [user] = useState(() => JSON.parse(localStorage.getItem('user') || 'null'));
+  const isAdmin = user?.role === 'Admin';
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deleting, setDeleting] = useState(false);
+
   // Fetch available centers once
   useEffect(() => {
     getLeadCenters()
@@ -44,6 +50,7 @@ function WebsiteLeads() {
         ? await getCallLeads(params)
         : await getBookingLeads(params);
       setLeads(res.data.data || []);
+      setSelectedIds(new Set());
       setLastRefresh(new Date());
     } catch (err) {
       setError('Failed to fetch leads. Please try again.');
@@ -85,6 +92,36 @@ function WebsiteLeads() {
   const closeEditModal = () => {
     setEditModal(null);
     setEditError('');
+  };
+
+  // ── Multi-select + delete ───────────────────────────────────────────────────
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === leads.length && leads.length > 0) setSelectedIds(new Set());
+    else setSelectedIds(new Set(leads.map(l => l.rowIndex)));
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.size} selected lead(s)? This cannot be undone.`)) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await deleteLeads(activeTab, [...selectedIds]);
+      setSelectedIds(new Set());
+      fetchLeads();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete leads');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const saveEdit = async () => {
@@ -210,10 +247,39 @@ function WebsiteLeads() {
               <div className="leads-count">
                 <strong>{leads.length}</strong> lead{leads.length !== 1 ? 's' : ''} found
               </div>
+
+              {/* Bulk delete bar (Admin only) */}
+              {isAdmin && selectedIds.size > 0 && (
+                <div className="bulk-action-bar leads-bulk-bar">
+                  <span className="bulk-selected-count">{selectedIds.size} selected</span>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={handleDeleteSelected}
+                    disabled={deleting}
+                  >
+                    <FiTrash2 size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                    {deleting ? 'Deleting…' : `Delete ${selectedIds.size}`}
+                  </button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => setSelectedIds(new Set())}>
+                    Clear
+                  </button>
+                </div>
+              )}
+
               <div className="table-responsive">
                 <table className="leads-table">
                   <thead>
                     <tr>
+                      {isAdmin && (
+                        <th className="checkbox-col">
+                          <input
+                            type="checkbox"
+                            checked={leads.length > 0 && selectedIds.size === leads.length}
+                            onChange={toggleSelectAll}
+                            title="Select all"
+                          />
+                        </th>
+                      )}
                       <th>#</th>
                       <th><FiCalendar size={12} /> Submitted</th>
                       <th>Wellness Center</th>
@@ -232,7 +298,16 @@ function WebsiteLeads() {
                   </thead>
                   <tbody>
                     {leads.map((lead, idx) => (
-                      <tr key={lead.rowIndex || idx}>
+                      <tr key={lead.rowIndex || idx} className={selectedIds.has(lead.rowIndex) ? 'row-selected' : ''}>
+                        {isAdmin && (
+                          <td className="checkbox-col">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(lead.rowIndex)}
+                              onChange={() => toggleSelect(lead.rowIndex)}
+                            />
+                          </td>
+                        )}
                         <td className="leads-row-num">{idx + 1}</td>
                         <td className="leads-timestamp">{formatTimestamp(lead.timestamp)}</td>
                         <td>
