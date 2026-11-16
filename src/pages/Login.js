@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { login } from '../services/api';
 
 function Login({ onLogin }) {
@@ -112,7 +112,7 @@ function Login({ onLogin }) {
         </form>
 
         <div className="modern-auth-link">
-          Don't have an account? <Link to="/signup">Sign up</Link>
+          Need an account? Ask an administrator to create one for you.
         </div>
         </div>
       </div>

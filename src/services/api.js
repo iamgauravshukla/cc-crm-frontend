@@ -95,6 +95,18 @@ export const getLeadCenters = () => api.get('/leads/centers');
 export const updateLead = (type, rowIndex, data) => api.patch(`/leads/${type}/${rowIndex}`, data);
 export const deleteLeads = (type, ids) => api.post(`/leads/${type}/bulk-delete`, { ids });
 
+// Session Tracker (treatment packages) APIs
+export const getPackages      = (params)        => api.get('/packages', { params });
+export const getPackageStats  = ()              => api.get('/packages/stats');
+export const getPackage       = (id)            => api.get(`/packages/${id}`);
+export const createPackage    = (data)          => api.post('/packages', data);
+export const updatePackage    = (id, data)      => api.patch(`/packages/${id}`, data);
+export const markSessionDone  = (id, sid)       => api.post(`/packages/${id}/sessions/${sid}/done`);
+export const scheduleSession  = (id, sid, data) => api.post(`/packages/${id}/sessions/${sid}/schedule`, data);
+export const sessionNoShow    = (id, sid)       => api.post(`/packages/${id}/sessions/${sid}/no-show`);
+export const remindSession    = (id, sid, channel) => api.post(`/packages/${id}/sessions/${sid}/remind`, { channel });
+export const addPackageLog    = (id, data)      => api.post(`/packages/${id}/contact-logs`, data);
+
 // Config (dropdown options) APIs
 export const getConfig           = ()         => api.get('/config');
 export const addConfigOption     = (data)     => api.post('/config', data);

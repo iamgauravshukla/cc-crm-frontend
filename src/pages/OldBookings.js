@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera, FiTrash2, FiAlertTriangle, FiDownload, FiBookmark, FiClock, FiCheckCircle, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
+import { FiArrowDown, FiArrowUp, FiGrid, FiList, FiEdit2, FiX, FiSave, FiFilter, FiSearch, FiCamera, FiTrash2, FiAlertTriangle, FiDownload, FiBookmark, FiClock, FiCheckCircle, FiAlertCircle, FiRefreshCw, FiRepeat } from 'react-icons/fi';
 import html2canvas from 'html2canvas';
 import { getOldBookings, deleteBooking, exportBookings, bulkUpdateStatus, bulkEditBookings, bulkDeleteBookings, getSavedViews, createSavedView, deleteSavedView, getActivityLog, updateBooking, updateValidation, updateBookingFlags } from '../services/api';
 import { useConfig } from '../hooks/useConfig';
@@ -1112,6 +1112,13 @@ function OldBookings() {
                             title="Edit booking"
                           >
                             <FiEdit2 size={16} />
+                          </button>
+                          <button
+                            className="edit-btn-icon"
+                            onClick={() => window.location.assign(`/session-tracker?fromBooking=${booking.recordId}`)}
+                            title="Create a treatment package from this sale"
+                          >
+                            <FiRepeat size={15} />
                           </button>
                         </td>
                         <td className="id-flags-cell">

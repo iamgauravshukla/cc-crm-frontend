@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
 import api from '../services/api';
-import { FiUsers, FiShield, FiClock, FiMail, FiUserCheck, FiEdit, FiTrash2, FiKey, FiX } from 'react-icons/fi';
+import { FiUsers, FiShield, FiClock, FiMail, FiUserCheck, FiEdit, FiTrash2, FiKey, FiX, FiUserPlus, FiSlash, FiCheckCircle } from 'react-icons/fi';
 
 function UsersManagement() {
   const [users, setUsers] = useState([]);
@@ -16,11 +16,14 @@ function UsersManagement() {
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [newRole, setNewRole] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', confirm: '', role: 'Agent' });
+  const currentUserId = JSON.parse(localStorage.getItem('user') || '{}')?.userId;
 
   useEffect(() => {
     // Check if user is admin
@@ -113,10 +116,52 @@ function UsersManagement() {
     setShowRoleModal(false);
     setShowPasswordModal(false);
     setShowDeleteModal(false);
+    setShowCreateModal(false);
     setSelectedUser(null);
     setNewRole('');
     setNewPassword('');
     setConfirmPassword('');
+    setNewUser({ name: '', email: '', password: '', confirm: '', role: 'Agent' });
+  };
+
+  // Create a new account (Admin-only; public signup is disabled)
+  const handleCreateUser = async () => {
+    if (newUser.password !== newUser.confirm) { setError('Passwords do not match'); return; }
+    if (newUser.password.length < 8) { setError('Password must be at least 8 characters long'); return; }
+    try {
+      setActionLoading(true);
+      setError('');
+      await api.post('/auth/signup', {
+        name: newUser.name.trim(),
+        email: newUser.email.trim(),
+        password: newUser.password,
+        role: newUser.role,
+      });
+      setSuccessMessage(`Account created for ${newUser.name.trim()}`);
+      fetchUsers();
+      closeModals();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to create account');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Enable / disable an account — disabled users are cut off immediately
+  const handleToggleActive = async (user) => {
+    const disabling = user.isActive;
+    if (disabling && !window.confirm(`Disable ${user.name}'s account? They will be signed out immediately.`)) return;
+    try {
+      setActionLoading(true);
+      setError('');
+      await api.patch(`/auth/users/${user.userId}/active`, { isActive: !user.isActive });
+      setSuccessMessage(`${user.name} ${disabling ? 'disabled' : 'enabled'}`);
+      fetchUsers();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update account status');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Update user role
@@ -205,6 +250,10 @@ function UsersManagement() {
                 <h1><FiUsers className="page-icon" /> Users Management</h1>
                 <p className="page-subtitle">Manage all system users, roles, and track activity</p>
               </div>
+              <button className="btn btn-primary btn-sm" style={{ width: 'auto', whiteSpace: 'nowrap' }} onClick={() => setShowCreateModal(true)}>
+                <FiUserPlus size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+                Add User
+              </button>
             </div>
             <div className="stats-summary">
               <div className="stat-item stat-admin">
@@ -276,9 +325,15 @@ function UsersManagement() {
                             </div>
                           </td>
                           <td>
-                            <span className={`status-badge ${getTimeSince(user.lastLogin).includes('day') && !getTimeSince(user.lastLogin).includes('0 day') ? 'status-inactive' : 'status-active'}`}>
-                              {getTimeSince(user.lastLogin).includes('day') && !getTimeSince(user.lastLogin).includes('0 day') ? 'Inactive' : 'Active'}
-                            </span>
+                            {user.isActive === false ? (
+                              <span className="status-badge status-inactive">Disabled</span>
+                            ) : user.lockedUntil && new Date(user.lockedUntil) > new Date() ? (
+                              <span className="status-badge status-inactive" title="Temporarily locked after failed login attempts">Locked</span>
+                            ) : (
+                              <span className={`status-badge ${getTimeSince(user.lastLogin).includes('day') && !getTimeSince(user.lastLogin).includes('0 day') ? 'status-inactive' : 'status-active'}`}>
+                                {getTimeSince(user.lastLogin).includes('day') && !getTimeSince(user.lastLogin).includes('0 day') ? 'Idle' : 'Active'}
+                              </span>
+                            )}
                           </td>
                           <td>
                             <div className="action-buttons">
@@ -296,7 +351,17 @@ function UsersManagement() {
                               >
                                 <FiKey />
                               </button>
-                              <button 
+                              {String(user.userId) !== String(currentUserId) && (
+                                <button
+                                  className="action-btn action-btn-delete"
+                                  onClick={() => handleToggleActive(user)}
+                                  disabled={actionLoading}
+                                  title={user.isActive === false ? 'Enable account' : 'Disable account (signs them out immediately)'}
+                                >
+                                  {user.isActive === false ? <FiCheckCircle /> : <FiSlash />}
+                                </button>
+                              )}
+                              <button
                                 className="action-btn action-btn-delete"
                                 onClick={() => openDeleteModal(user)}
                                 title="Delete User"
@@ -315,6 +380,60 @@ function UsersManagement() {
           )}
         </div>
       </div>
+
+      {/* Add User Modal */}
+      {showCreateModal && (
+        <div className="modal-overlay" onClick={closeModals}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2><FiUserPlus /> Add User</h2>
+              <button className="modal-close" onClick={closeModals}>
+                <FiX />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Full Name</label>
+                <input type="text" className="form-control" value={newUser.name}
+                  onChange={(e) => setNewUser(u => ({ ...u, name: e.target.value }))} placeholder="e.g. Maria Santos" />
+              </div>
+              <div className="form-group">
+                <label>Email</label>
+                <input type="email" className="form-control" value={newUser.email}
+                  onChange={(e) => setNewUser(u => ({ ...u, email: e.target.value }))} placeholder="name@company.com" />
+              </div>
+              <div className="form-group">
+                <label>Role</label>
+                <select className="form-control" value={newUser.role}
+                  onChange={(e) => setNewUser(u => ({ ...u, role: e.target.value }))}>
+                  <option value="Agent">Agent</option>
+                  <option value="Admin">Admin</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Temporary Password</label>
+                <input type="password" className="form-control" value={newUser.password}
+                  onChange={(e) => setNewUser(u => ({ ...u, password: e.target.value }))} placeholder="Min 8 characters" />
+              </div>
+              <div className="form-group">
+                <label>Confirm Password</label>
+                <input type="password" className="form-control" value={newUser.confirm}
+                  onChange={(e) => setNewUser(u => ({ ...u, confirm: e.target.value }))} placeholder="Repeat the password" />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={closeModals} disabled={actionLoading}>Cancel</button>
+              <button
+                className="btn btn-primary"
+                onClick={handleCreateUser}
+                disabled={actionLoading || !newUser.name.trim() || !newUser.email.trim() || !newUser.password || !newUser.confirm}
+              >
+                {actionLoading ? 'Creating...' : 'Create Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Role Modal */}
       {showRoleModal && (

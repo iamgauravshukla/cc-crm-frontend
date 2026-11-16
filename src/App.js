@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import Login from './pages/Login';
-import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import CreateBooking from './pages/CreateBooking';
 import OldBookings from './pages/OldBookings';
@@ -17,6 +16,7 @@ import ConfigPage      from './pages/ConfigPage';
 import CustomerLookup from './pages/CustomerLookup';
 import WebsiteLeads from './pages/WebsiteLeads';
 import KanbanBoard from './pages/KanbanBoard';
+import SessionTracker from './pages/SessionTracker';
 import ImportData from './pages/ImportData';
 import LeadsTest from './pages/LeadsTest';
 import './App.css';
@@ -72,9 +72,8 @@ function App() {
           <Route path="/login" element={
             isAuthenticated ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />
           } />
-          <Route path="/signup" element={
-            isAuthenticated ? <Navigate to="/dashboard" /> : <Signup />
-          } />
+          {/* Public self-signup is disabled — accounts are created by Admins in Users Management */}
+          <Route path="/signup" element={<Navigate to="/login" />} />
           <Route path="/dashboard" element={
             <PrivateRoute>
               <Dashboard onLogout={handleLogout} />
@@ -88,6 +87,11 @@ function App() {
           <Route path="/old-bookings" element={
             <PrivateRoute>
               <OldBookings />
+            </PrivateRoute>
+          } />
+          <Route path="/session-tracker" element={
+            <PrivateRoute>
+              <SessionTracker />
             </PrivateRoute>
           } />
           <Route path="/analytics" element={
