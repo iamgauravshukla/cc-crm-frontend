@@ -107,6 +107,25 @@ export const sessionNoShow    = (id, sid)       => api.post(`/packages/${id}/ses
 export const remindSession    = (id, sid, channel) => api.post(`/packages/${id}/sessions/${sid}/remind`, { channel });
 export const addPackageLog    = (id, data)      => api.post(`/packages/${id}/contact-logs`, data);
 
+// Chat QA APIs (Admin only)
+export const getQaPages         = (fresh)    => api.get('/qa/pages', { params: fresh ? { fresh: 1 } : {} });
+export const getQaAgents        = (pageId)   => api.get(`/qa/pages/${pageId}/agents`);
+export const startQaRun         = (data)     => api.post('/qa/runs', data);
+export const getQaRuns          = ()         => api.get('/qa/runs');
+export const getQaRun           = (id)       => api.get(`/qa/runs/${id}`);
+export const deleteQaRun        = (id)       => api.delete(`/qa/runs/${id}`);
+export const getQaConversations = (params)   => api.get('/qa/conversations', { params });
+export const getQaConversation  = (id)       => api.get(`/qa/conversations/${id}`);
+export const getQaStats         = (params)   => api.get('/qa/stats', { params });
+export const getQaAgentProfile  = (name, params) => api.get(`/qa/agents/${encodeURIComponent(name)}/profile`, { params });
+export const getQaWorkload      = (pageId, params) => api.get(`/qa/pages/${pageId}/workload`, { params });
+export const getQaAgentScorecard = (name, params) => api.get(`/qa/agents/${encodeURIComponent(name)}/scorecard`, { params });
+export const getQaRatings       = (params)   => api.get('/qa/ratings', { params });
+export const getQaAgentMap      = ()         => api.get('/qa/agent-map');
+export const saveQaAgentMap     = (data)     => api.put('/qa/agent-map', data);
+export const getAciWeights      = ()         => api.get('/qa/settings/aci-weights');
+export const saveAciWeights     = (weights)  => api.put('/qa/settings/aci-weights', { weights });
+
 // Config (dropdown options) APIs
 export const getConfig           = ()         => api.get('/config');
 export const addConfigOption     = (data)     => api.post('/config', data);

@@ -914,3 +914,29 @@
     display: none;
   }
 }
+
+/* ── Containment & readability fixes ────────────────────────────────────── */
+/* Charts and the click-through booking list must never spill past their card */
+.sales-report-page .chart-card { min-width: 0; max-width: 100%; overflow: hidden; }
+.sales-report-page .chart-card .dr-drilldown { min-width: 0; max-width: 100%; margin-top: 14px; border-radius: 10px; }
+.sales-report-page .chart-card .dr-drilldown-table-wrap { overflow-x: auto; }
+.sales-report-page .chart-card .dr-drilldown-table-wrap table { min-width: 640px; }
+.sales-report-page .charts-grid { min-width: 0; }
+.sales-report-page .chart-content { min-width: 0; }
+
+/* Apex legends wrap instead of clipping on narrow cards */
+.sales-report-page .apexcharts-legend { flex-wrap: wrap !important; }
+
+@media (max-width: 768px) {
+  .sales-report-page .chart-card { padding: 14px; }
+  .sales-report-page .chart-header h3 { font-size: 15px; }
+  .sales-report-page .chart-header { margin-bottom: 10px; }
+  .sales-report-page .chart-content { min-height: 230px; }
+  .sales-report-page .apexcharts-toolbar { display: none !important; }
+  .sales-report-page .overall-sales-amount { font-size: 26px !important; }
+  .sales-report-page .overall-sales-hero-right { flex-wrap: wrap; gap: 12px; }
+}
+@media (max-width: 480px) {
+  .sales-report-page .key-metrics { grid-template-columns: 1fr; }
+  .sales-report-page .branches-grid { grid-template-columns: 1fr; }
+}

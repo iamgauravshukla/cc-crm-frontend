@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import html2canvas from 'html2canvas';
-import { FiRefreshCw, FiCamera, FiDownload, FiX, FiAlertCircle, FiChevronDown, FiPhone, FiMail } from 'react-icons/fi';
+import { FiRefreshCw, FiCamera, FiDownload, FiX, FiAlertCircle, FiChevronDown, FiPhone, FiMail, FiPrinter, FiBarChart2, FiList, FiGrid } from 'react-icons/fi';
 import { useTheme } from '../context/ThemeContext';
 import Sidebar from '../components/Sidebar';
 import Loader from '../components/Loader';
@@ -21,15 +21,40 @@ export default function CCBookingReport() {
   const [error, setError]       = useState(null);
   const [refreshAt, setRefreshAt] = useState(new Date());
 
+  // Simple report view (default) vs full chart dashboard
+  const [view, setView] = useState(() => {
+    try { return localStorage.getItem('ccr-view') || 'simple'; } catch { return 'simple'; }
+  });
+  const switchView = (v) => { setView(v); try { localStorage.setItem('ccr-view', v); } catch { /* ignore */ } };
+
   // Snapshot
   const [snapshotMode, setSnapshotMode]   = useState(false);
   const [selectedCards, setSelectedCards] = useState(new Set());
   const [downloading, setDownloading]     = useState(false);
   const cardRefs = useRef({});
 
-  // Drill-down
+  // Drill-down (+ table ↔ card layout; cards by default on narrow screens)
   const [drillDown, setDrillDown]   = useState(null);
+  const [ddCards, setDdCards] = useState(() => typeof window !== 'undefined' && window.innerWidth < 760);
   const bookingsCache = useRef({});
+
+  // Simple-view branch modal (client list behind one branch row)
+  const [svModal, setSvModal] = useState(null); // { branch, bookings, loading }
+  const openBranchModal = async (branch) => {
+    setSvModal({ branch, bookings: [], loading: true });
+    try {
+      let all = bookingsCache.current['sv-today'];
+      if (!all) {
+        const res = await getCCReportDrilldown('schedules-today', {});
+        all = res.data?.bookings || [];
+        bookingsCache.current['sv-today'] = all;
+      }
+      const filtered = all.filter(b => (b.branch || '').toLowerCase() === branch.toLowerCase());
+      setSvModal(prev => prev?.branch === branch ? { branch, bookings: filtered, loading: false } : prev);
+    } catch {
+      setSvModal(prev => prev?.branch === branch ? { branch, bookings: [], loading: false } : prev);
+    }
+  };
 
   // Per-widget refine filters, keyed by chartKey (today, tomorrow, payment, next7, ots, arrivals, cancellations)
   const [widgetFilters, setWidgetFilters] = useState({});
@@ -239,46 +264,204 @@ export default function CCBookingReport() {
               </span>
             )}
           </div>
-          <button className="dr-drilldown-close" onClick={() => setDrillDown(null)} title="Close">
-            <FiX size={15} />
-          </button>
+          <div className="dr-drilldown-actions">
+            <div className="dd-viewtoggle" role="group" aria-label="Layout">
+              <button className={!ddCards ? 'on' : ''} onClick={() => setDdCards(false)} title="Table view"><FiList size={13} /></button>
+              <button className={ddCards ? 'on' : ''} onClick={() => setDdCards(true)} title="Card view"><FiGrid size={13} /></button>
+            </div>
+            <button className="dr-drilldown-close" onClick={() => setDrillDown(null)} title="Close">
+              <FiX size={15} />
+            </button>
+          </div>
         </div>
         {drillDown.loading ? (
           <div className="dr-drilldown-msg">Loading bookings…</div>
         ) : drillDown.bookings.length === 0 ? (
           <div className="dr-drilldown-msg">No bookings found for {drillDown.filterValue}</div>
         ) : (
-          <ScrollableTable className="dr-drilldown-table-wrap">
-            <table className="bookings-table">
-              <thead>
-                <tr>
-                  <th>Name</th><th>Age</th><th>Branch</th><th>Date</th><th>Treatment</th>
-                  <th>Status</th><th>Contact</th><th>Price</th><th>Agent</th>
-                </tr>
-              </thead>
-              <tbody>
-                {drillDown.bookings.map((b, idx) => (
-                  <tr key={idx}>
-                    <td><strong>{b.firstName} {b.lastName}</strong></td>
-                    <td>{b.age ?? '-'}</td>
-                    <td>{b.branch}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{b.date}</td>
-                    <td>{b.treatment}</td>
-                    <td><span className={`status-badge status-${(b.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{b.status}</span></td>
-                    <td className="contact-cell">
-                      <div className="contact-info">
-                        {b.phone && <a href={`tel:${b.phone}`} title={b.phone}><FiPhone size={13}/></a>}
-                        {b.email && <a href={`mailto:${b.email}`} title={b.email}><FiMail size={13}/></a>}
-                      </div>
-                    </td>
-                    <td>₱{Number(b.totalPrice||0).toLocaleString()}</td>
-                    <td>{b.agent}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </ScrollableTable>
+          <BookingListBody bookings={drillDown.bookings} />
         )}
+      </div>
+    );
+  };
+
+  // Shared booking list — table or cards per the ddCards toggle; used by the
+  // chart drill-down panel and the simple-view branch modal alike.
+  const BookingListBody = ({ bookings }) => ddCards ? (
+    <div className="dd-cardgrid">
+      {bookings.map((b, idx) => (
+        <div className="dd-card" key={idx}>
+          <div className="dd-card-top">
+            <strong>{b.firstName} {b.lastName}</strong>
+            <span className={`status-badge status-${(b.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{b.status}</span>
+          </div>
+          <div className="dd-card-rows">
+            <span>{b.branch} · {b.date}</span>
+            <span>{b.treatment || '—'}</span>
+            <span>Age {b.age ?? '—'} · Agent {b.agent || '—'}</span>
+          </div>
+          <div className="dd-card-foot">
+            <b>₱{Number(b.totalPrice||0).toLocaleString()}</b>
+            <span className="contact-info">
+              {b.phone && <a href={`tel:${b.phone}`} title={b.phone}><FiPhone size={14}/></a>}
+              {b.email && <a href={`mailto:${b.email}`} title={b.email}><FiMail size={14}/></a>}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <ScrollableTable className="dr-drilldown-table-wrap">
+      <table className="bookings-table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Age</th><th>Branch</th><th>Date</th><th>Treatment</th>
+            <th>Status</th><th>Contact</th><th>Price</th><th>Agent</th>
+          </tr>
+        </thead>
+        <tbody>
+          {bookings.map((b, idx) => (
+            <tr key={idx}>
+              <td><strong>{b.firstName} {b.lastName}</strong></td>
+              <td>{b.age ?? '-'}</td>
+              <td>{b.branch}</td>
+              <td style={{ whiteSpace: 'nowrap' }}>{b.date}</td>
+              <td>{b.treatment}</td>
+              <td><span className={`status-badge status-${(b.status||'').toLowerCase().replace(/\s+/g,'-')}`}>{b.status}</span></td>
+              <td className="contact-cell">
+                <div className="contact-info">
+                  {b.phone && <a href={`tel:${b.phone}`} title={b.phone}><FiPhone size={13}/></a>}
+                  {b.email && <a href={`mailto:${b.email}`} title={b.email}><FiMail size={13}/></a>}
+                </div>
+              </td>
+              <td>₱{Number(b.totalPrice||0).toLocaleString()}</td>
+              <td>{b.agent}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </ScrollableTable>
+  );
+
+  // ── Simple report view (matches the printed daily report the team shares) ──
+  const SimpleView = () => {
+    const ds = data.dailySummary || { byBranch: {}, totals: {} };
+    const t = ds.totals || {};
+    const branches = Object.entries(ds.byBranch || {}).sort(([,a],[,b]) => b.overall - a.overall);
+    const arrived = (t.arrivedBought || 0) + (t.arrivedNotPotential || 0) + (t.inTreatment || 0);
+    const pctOf = (n) => t.overall > 0 ? Math.round((n / t.overall) * 100) : 0;
+    const busiest = branches[0];
+    const maxOverall = busiest ? busiest[1].overall : 0;
+    const dot = (name, i) => <span className="sv-dot" style={{ background: branchColor(name, i) }} />;
+    const cell = (v, cls = '') => v > 0 ? <td className={cls}>{v}</td> : <td className={cls}><span className="sv-z">·</span></td>;
+
+    return (
+      <div className="sv-card" id="ccr-print-area">
+        {/* Page already has a header — this one appears only on the printed PDF */}
+        <div className="sv-hd sv-printonly">
+          <div>
+            <h2>📋 Daily Bookings Report</h2>
+            <div className="sv-sub">Ageless Branches · Call Center Bookings · {branches.length} branch{branches.length !== 1 ? 'es' : ''}</div>
+          </div>
+          <div className="sv-datebadge">
+            <span className="sv-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Manila' })}</span>
+            <div className="sv-asof">Live snapshot — as of {refreshAt.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })}</div>
+          </div>
+        </div>
+
+        <div className="sv-kpis">
+          <div className="sv-kpi k0"><div className="l">Overall Bookings</div><div className="v">{formatNum(t.overall)}</div><div className="s">appointments today</div></div>
+          <div className="sv-kpi k1"><div className="l">OTS · same-day</div><div className="v">{formatNum(t.ots)}</div><div className="s">booked &amp; scheduled today</div></div>
+          <div className="sv-kpi k2"><div className="l">Additional · advance</div><div className="v">{formatNum(t.additional)}</div><div className="s">booked on earlier days</div></div>
+          <div className="sv-kpi k3"><div className="l">Arrived so far</div><div className="v">{formatNum(arrived)}</div><div className="s">{pctOf(arrived)}% of bookings</div></div>
+          <div className="sv-kpi k4"><div className="l">Cancelled</div><div className="v">{formatNum(t.cancelled)}</div><div className="s">{pctOf(t.cancelled)}% of bookings</div></div>
+        </div>
+
+        <div className="sv-ins">
+          <b>At a glance:</b> {formatNum(t.overall || 0)} bookings across {branches.length} branches{busiest ? <> — <b>{busiest[0]}</b> is busiest with <b>{busiest[1].overall}</b>.</> : '.'}{' '}
+          <span className="sv-tag tg">{arrived} arrived</span>{' '}
+          <span className="sv-tag tr">{t.cancelled || 0} cancelled ({pctOf(t.cancelled || 0)}%)</span>{' '}
+          <span className="sv-tag ta">{t.upcoming || 0} still upcoming</span>
+          {' '}— same-day (OTS) vs advance: {t.ots || 0} vs {t.additional || 0}.
+          {t.promoHunter > 0 ? <> {t.promoHunter} promo-hunter{t.promoHunter !== 1 ? 's' : ''} flagged.</> : null}
+        </div>
+
+        <div className="sv-sec"><h3>Per-branch breakdown</h3><div className="sv-line" /></div>
+        <div className="sv-tablewrap">
+          <table className="sv-table">
+            <thead>
+              <tr className="sv-grp">
+                <th className="bn"></th>
+                <th className="gb gb-book" colSpan={3}>Bookings</th>
+                <th className="sp"></th>
+                <th className="gb gb-arr" colSpan={3}>Arrived</th>
+                <th className="sp"></th>
+                <th className="gb gb-nc" colSpan={4}>Not yet / not completed</th>
+              </tr>
+              <tr className="sv-cols">
+                <th className="bn">Branch</th>
+                <th>Overall</th><th>OTS<br/>same-day</th><th>Additional<br/>advance</th>
+                <th className="sp"></th>
+                <th>&amp; Bought</th><th>Not<br/>Potential</th><th>In<br/>Treatment</th>
+                <th className="sp"></th>
+                <th>Cancelled</th><th>No<br/>Show</th><th>Promo<br/>Hunter</th><th>Upcoming</th>
+              </tr>
+            </thead>
+            <tbody>
+              {branches.map(([name, d], i) => (
+                <tr key={name} className="sv-rowclick" onClick={() => openBranchModal(name)} title={`View ${name}'s client list`}>
+                  <td className="bn">{dot(name, i)}{name}</td>
+                  <td className="ov">{d.overall}</td>
+                  {cell(d.ots)}{cell(d.additional)}
+                  <td className="sp"></td>
+                  {cell(d.arrivedBought, 'g1')}{cell(d.arrivedNotPotential, 'g2')}{cell(d.inTreatment, 'g3')}
+                  <td className="sp"></td>
+                  {cell(d.cancelled, 'r1')}{cell(d.noShow, 'r2')}{cell(d.promoHunter, 'r3')}{cell(d.upcoming, 'u')}
+                </tr>
+              ))}
+              <tr className="sv-tot">
+                <td className="bn">TOTAL</td>
+                <td className="ov">{t.overall || 0}</td>
+                <td>{t.ots || 0}</td><td>{t.additional || 0}</td>
+                <td className="sp"></td>
+                <td>{t.arrivedBought || 0}</td><td>{t.arrivedNotPotential || 0}</td><td>{t.inTreatment || 0}</td>
+                <td className="sp"></td>
+                <td>{t.cancelled || 0}</td><td>{t.noShow || 0}</td><td>{t.promoHunter || 0}</td><td>{t.upcoming || 0}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="sv-grid2">
+          <div>
+            <div className="sv-sec"><h3>Bookings by branch</h3><div className="sv-line" /></div>
+            {branches.map(([name, d], i) => (
+              <div className="sv-barrow sv-rowclick" key={name} onClick={() => openBranchModal(name)} title={`View ${name}'s client list`}>
+                <div className="sv-blab">{name}</div>
+                <div className="sv-btrack"><div className="sv-bfill" style={{ width: `${maxOverall > 0 ? Math.max(4, Math.round((d.overall / maxOverall) * 100)) : 0}%`, background: branchColor(name, i) }} /></div>
+                <div className="sv-bval">{d.overall}</div>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div className="sv-sec"><h3>What the columns mean</h3><div className="sv-line" /></div>
+            <div className="sv-legend">
+              <b>OTS</b> — a fresh lead that booked for the same day.<br/>
+              <b>Additional</b> — booked on a previous day for today.<br/>
+              <b>Arrived &amp; Bought</b> — showed up and purchased add-on services.<br/>
+              <b>Arrived Not Potential</b> — showed up, paid the promo only.<br/>
+              <b>In Treatment</b> — arrived, currently being served.<br/>
+              <b>Cancelled / No Show</b> — did not push through.<br/>
+              <b>Promo Hunter</b> — repeat promo-only seeker (flagged).<br/>
+              <b>Upcoming</b> — appointment later today, not yet arrived.
+            </div>
+          </div>
+        </div>
+
+        <div className="sv-foot">
+          <span>Source: Ageless CRM — CC Bookings Report (live)</span>
+          <span>Generated {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Manila' })} · {refreshAt.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' })} · Ageless Branches</span>
+        </div>
       </div>
     );
   };
@@ -296,14 +479,27 @@ export default function CCBookingReport() {
           </div>
           <div className="ccr-header-actions">
             <span className="ccr-refresh-label">Updated {refreshAt.toLocaleTimeString()}</span>
-            <SavedViewsMenu page="cc-report" filters={widgetFilters} onLoad={(f) => setWidgetFilters(f || {})} />
-            <button
-              className={`ccr-btn${snapshotMode ? ' active' : ''}`}
-              onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }}
-              title="Snapshot mode"
-            >
-              <FiCamera size={16} />
-            </button>
+            <div className="ccr-viewtoggle" role="group" aria-label="Report view">
+              <button className={view === 'simple' ? 'on' : ''} onClick={() => switchView('simple')}><FiList size={14} /> Simple</button>
+              <button className={view === 'charts' ? 'on' : ''} onClick={() => switchView('charts')}><FiBarChart2 size={14} /> Charts</button>
+            </div>
+            {view === 'simple' && (
+              <button className="ccr-btn" onClick={() => window.print()} title="Print / save as PDF">
+                <FiPrinter size={16} />
+              </button>
+            )}
+            {view === 'charts' && (
+              <>
+                <SavedViewsMenu page="cc-report" filters={widgetFilters} onLoad={(f) => setWidgetFilters(f || {})} />
+                <button
+                  className={`ccr-btn${snapshotMode ? ' active' : ''}`}
+                  onClick={() => { setSnapshotMode(s => !s); setSelectedCards(new Set()); }}
+                  title="Snapshot mode"
+                >
+                  <FiCamera size={16} />
+                </button>
+              </>
+            )}
             <button className="ccr-btn" onClick={fetch} title="Refresh">
               <FiRefreshCw size={16} />
             </button>
@@ -316,6 +512,11 @@ export default function CCBookingReport() {
           </div>
         )}
 
+        {/* ── Simple report view (default) ─────────────────────────── */}
+        {view === 'simple' && <SimpleView />}
+
+        {view === 'charts' && (
+        <>
         {/* ── Performance Strip ────────────────────────────────────── */}
         {performance && (
           <div className="ccr-perf-strip">
@@ -520,6 +721,45 @@ export default function CCBookingReport() {
           </div>
           <DrillDownPanel chartKey="cancellations" />
         </div>
+
+        </>
+        )}
+
+        {/* ── Simple-view branch client list (modal) ─────────────────── */}
+        {svModal && (
+          <div className="modal-overlay" onClick={() => setSvModal(null)}>
+            <div className="modal-content dr-modal-wide sv-modal" onClick={e => e.stopPropagation()}>
+              <div className="sv-modal-head">
+                <div className="dr-drilldown-title">
+                  <strong>{svModal.branch}</strong>
+                  {!svModal.loading && (
+                    <span className="dr-drilldown-count">
+                      {svModal.bookings.length} booking{svModal.bookings.length !== 1 ? 's' : ''} today
+                    </span>
+                  )}
+                </div>
+                <div className="dr-drilldown-actions">
+                  <div className="dd-viewtoggle" role="group" aria-label="Layout">
+                    <button className={!ddCards ? 'on' : ''} onClick={() => setDdCards(false)} title="Table view"><FiList size={13} /></button>
+                    <button className={ddCards ? 'on' : ''} onClick={() => setDdCards(true)} title="Card view"><FiGrid size={13} /></button>
+                  </div>
+                  <button className="dr-drilldown-close" onClick={() => setSvModal(null)} title="Close">
+                    <FiX size={16} />
+                  </button>
+                </div>
+              </div>
+              {svModal.loading ? (
+                <div className="dr-drilldown-msg">Loading client list…</div>
+              ) : svModal.bookings.length === 0 ? (
+                <div className="dr-drilldown-msg">No bookings scheduled today for {svModal.branch}</div>
+              ) : (
+                <div className="sv-modal-body">
+                  <BookingListBody bookings={svModal.bookings} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Snapshot floating bar */}
         {snapshotMode && (

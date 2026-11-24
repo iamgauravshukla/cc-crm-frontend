@@ -22,6 +22,7 @@
 
 import React, { useState } from 'react';
 import { FiFilter, FiX } from 'react-icons/fi';
+import { todayManila } from '../utils/dates';
 
 export default function QuickFilterBar({
   fields = [],
@@ -294,9 +295,9 @@ export default function QuickFilterBar({
                   <div className="qf-builder-row">
                     <label>Range</label>
                     <div className="qf-custom-dates">
-                      <input type="date" value={builderDateFrom} onChange={e => setBuilderDateFrom(e.target.value)} max={builderDateTo || undefined} aria-label="From date" />
+                      <input type="date" value={builderDateFrom} onChange={e => setBuilderDateFrom(e.target.value)} max={builderDateTo && builderDateTo < todayManila() ? builderDateTo : todayManila()} aria-label="From date" />
                       <span>to</span>
-                      <input type="date" value={builderDateTo} onChange={e => setBuilderDateTo(e.target.value)} min={builderDateFrom || undefined} aria-label="To date" />
+                      <input type="date" value={builderDateTo} onChange={e => setBuilderDateTo(e.target.value)} min={builderDateFrom || undefined} max={todayManila()} aria-label="To date" />
                     </div>
                   </div>
                 )}
@@ -308,9 +309,9 @@ export default function QuickFilterBar({
               <div className="qf-builder-row">
                 <label>Range</label>
                 <div className="qf-custom-dates">
-                  <input type="date" value={builderDateFrom} onChange={e => setBuilderDateFrom(e.target.value)} max={builderDateTo || undefined} aria-label="From date" />
+                  <input type="date" value={builderDateFrom} onChange={e => setBuilderDateFrom(e.target.value)} max={builderDateTo && builderDateTo < todayManila() ? builderDateTo : todayManila()} aria-label="From date" />
                   <span>to</span>
-                  <input type="date" value={builderDateTo} onChange={e => setBuilderDateTo(e.target.value)} min={builderDateFrom || undefined} aria-label="To date" />
+                  <input type="date" value={builderDateTo} onChange={e => setBuilderDateTo(e.target.value)} min={builderDateFrom || undefined} max={todayManila()} aria-label="To date" />
                 </div>
               </div>
             )}

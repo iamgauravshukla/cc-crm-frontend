@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiFilter, FiX, FiPlus, FiChevronDown } from 'react-icons/fi';
+import { todayManila } from '../utils/dates';
 import './WidgetFilter.css';
 
 const FIELDS = [
@@ -200,9 +201,9 @@ function WidgetFilter({ options = {}, value = EMPTY_WFILTER, onApply, label }) {
                   {DATE_FIELDS.has(c.field) ? (
                     isRange(c.value) ? (
                       <div className="wf-range">
-                        <input type="date" value={c.value.from || ''} onChange={(e) => setCond(i, { value: { ...c.value, from: e.target.value } })} aria-label="From date" />
+                        <input type="date" value={c.value.from || ''} max={c.value.to && c.value.to < todayManila() ? c.value.to : todayManila()} onChange={(e) => setCond(i, { value: { ...c.value, from: e.target.value } })} aria-label="From date" />
                         <span className="wf-range-sep">→</span>
-                        <input type="date" value={c.value.to || ''} onChange={(e) => setCond(i, { value: { ...c.value, to: e.target.value } })} aria-label="To date" />
+                        <input type="date" value={c.value.to || ''} min={c.value.from || undefined} max={todayManila()} onChange={(e) => setCond(i, { value: { ...c.value, to: e.target.value } })} aria-label="To date" />
                         <button type="button" className="wf-linkbtn" title="Use presets instead" onClick={() => setCond(i, { value: [] })}>Presets</button>
                       </div>
                     ) : (

@@ -10,6 +10,16 @@ import { useConfig } from '../hooks/useConfig';
 import { branchColor } from '../utils/branchColors';
 import './SalesReport.css';
 
+// Compact peso for axis/data labels — full values stay in tooltips.
+// "₱1.2M" / "₱45k" / "₱950" instead of "₱1,234,567" strings that overlap.
+const pesoShort = (v) => {
+  const n = Number(v) || 0;
+  if (Math.abs(n) >= 1e6) return `₱${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M`;
+  if (Math.abs(n) >= 1e3) return `₱${(n / 1e3).toFixed(0)}k`;
+  return `₱${n.toLocaleString()}`;
+};
+const pesoFull = (v) => `₱${Number(v || 0).toLocaleString()}`;
+
 const initDefaultDateRange = () => {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
@@ -262,34 +272,46 @@ const SalesReport = () => {
     states: { active: { filter: { type: 'darken', value: 0.7 } } },
     dataLabels: {
       enabled: true,
-      formatter: (val) => `₱${val.toLocaleString()}`,
-      offsetY: -20,
+      formatter: pesoShort,
+      offsetY: -18,
       style: {
-        fontSize: '11px',
+        fontSize: '10px',
+        fontWeight: 600,
         colors: [isDarkMode ? '#cbd5e1' : '#64748b']
       }
     },
     xaxis: {
       categories: rangeSales.byBranch.map(b => b.branch),
       labels: {
+        rotate: -35,
+        rotateAlways: rangeSales.byBranch.length > 6,
+        trim: true,
+        hideOverlappingLabels: true,
         style: {
+          fontSize: '11px',
           colors: isDarkMode ? '#cbd5e1' : '#64748b'
         }
       }
     },
     yaxis: {
       labels: {
-        formatter: (val) => `₱${val.toLocaleString()}`,
+        formatter: pesoShort,
         style: {
           colors: isDarkMode ? '#cbd5e1' : '#64748b'
         }
       }
     },
+    tooltip: {
+      theme: isDarkMode ? 'dark' : 'light',
+      y: { formatter: pesoFull }
+    },
     colors: rangeSales.byBranch.map((b, i) => branchColor(b.branch, i)),
     title: {
-      text: 'By Branch',
+      text: 'By Branch — click a bar for its bookings',
       align: 'left',
+      margin: 4,
       style: {
+        fontSize: '12px',
         color: isDarkMode ? '#cbd5e1' : '#64748b'
       }
     }
@@ -310,40 +332,44 @@ const SalesReport = () => {
     },
     plotOptions: {
       bar: {
-        borderRadius: 6,
-        dataLabels: {
-          position: 'top'
-        }
+        borderRadius: 4,
+        columnWidth: '70%'
       }
     },
-    dataLabels: {
-      enabled: true,
-      formatter: (val) => `₱${val.toLocaleString()}`,
-      offsetY: -20,
-      style: {
-        fontSize: '11px',
-        colors: [isDarkMode ? '#cbd5e1' : '#64748b']
-      }
-    },
+    // Two series × many branches — per-bar labels overlap into noise; the
+    // tooltip and y-axis carry the exact numbers instead.
+    dataLabels: { enabled: false },
     xaxis: {
       categories: rangeFirstHalfSales.byBranch.map(b => b.branch),
       labels: {
+        rotate: -35,
+        rotateAlways: rangeFirstHalfSales.byBranch.length > 6,
+        trim: true,
+        hideOverlappingLabels: true,
         style: {
+          fontSize: '11px',
           colors: isDarkMode ? '#cbd5e1' : '#64748b'
         }
       }
     },
     yaxis: {
       labels: {
-        formatter: (val) => `₱${val.toLocaleString()}`,
+        formatter: pesoShort,
         style: {
           colors: isDarkMode ? '#cbd5e1' : '#64748b'
         }
       }
     },
+    tooltip: {
+      theme: isDarkMode ? 'dark' : 'light',
+      shared: true,
+      intersect: false,
+      y: { formatter: pesoFull }
+    },
     colors: ['#2563eb', '#8b5cf6'],
     legend: {
-      position: 'top'
+      position: 'top',
+      fontSize: '12px'
     }
   } : {};
 
@@ -370,21 +396,27 @@ const SalesReport = () => {
     colors: rangeSales.byBranch.map((b, i) => branchColor(b.branch, i)),
     legend: {
       position: 'bottom',
+      fontSize: '11px',
+      itemMargin: { horizontal: 6, vertical: 2 },
       labels: {
         colors: isDarkMode ? '#cbd5e1' : '#64748b'
       }
     },
+    // Labels only on slices big enough to hold them — small ones live in the legend/tooltip
+    plotOptions: { pie: { dataLabels: { minAngleToShowLabel: 14 } } },
     dataLabels: {
       enabled: true,
-      formatter: (val) => `${val.toFixed(1)}%`,
+      formatter: (val) => `${val.toFixed(0)}%`,
+      dropShadow: { enabled: false },
       style: {
+        fontSize: '11px',
         colors: ['#fff']
       }
     },
+    stroke: { width: 1, colors: [isDarkMode ? '#1e2235' : '#ffffff'] },
     tooltip: {
-      y: {
-        formatter: (val) => `₱${val.toLocaleString()}`
-      }
+      theme: isDarkMode ? 'dark' : 'light',
+      y: { formatter: pesoFull }
     }
   } : {};
 
@@ -400,39 +432,42 @@ const SalesReport = () => {
     },
     plotOptions: {
       bar: {
-        borderRadius: 6,
+        borderRadius: 4,
         horizontal: true,
-        dataLabels: {
-          position: 'top'
-        }
+        barHeight: '72%'
       }
     },
-    dataLabels: {
-      enabled: true,
-      formatter: (val) => `₱${val.toLocaleString()}`,
-      style: {
-        fontSize: '11px',
-        colors: [isDarkMode ? '#cbd5e1' : '#64748b']
-      }
-    },
+    // Full peso labels inside horizontal bars collide with each other — the
+    // shared tooltip and ₱k axis tell the story cleanly.
+    dataLabels: { enabled: false },
     xaxis: {
       labels: {
-        formatter: (val) => `₱${val.toLocaleString()}`,
+        formatter: pesoShort,
         style: {
+          fontSize: '11px',
           colors: isDarkMode ? '#cbd5e1' : '#64748b'
         }
       }
     },
     yaxis: {
       labels: {
+        maxWidth: 110,
         style: {
+          fontSize: '11px',
           colors: isDarkMode ? '#cbd5e1' : '#64748b'
         }
       }
     },
+    tooltip: {
+      theme: isDarkMode ? 'dark' : 'light',
+      shared: true,
+      intersect: false,
+      y: { formatter: pesoFull }
+    },
     colors: ['#f59e0b', '#10b981'],
     legend: {
-      position: 'top'
+      position: 'top',
+      fontSize: '12px'
     }
   } : {};
 
@@ -477,25 +512,32 @@ const SalesReport = () => {
     },
     plotOptions: {
       bar: {
-        borderRadius: 6,
+        borderRadius: 4,
+        columnWidth: '55%',
         dataLabels: {
           position: 'top'
         }
       }
     },
+    stroke: { width: [0, 3], curve: 'smooth' },
     dataLabels: {
       enabled: true,
-      formatter: (val) => val > 0 ? `₱${(val / 1000).toFixed(0)}k` : '',
-      offsetY: -20,
+      enabledOnSeries: [0], // peso labels on the columns only — not on every line point
+      formatter: (val) => val > 0 ? pesoShort(val) : '',
+      offsetY: -18,
       style: {
         fontSize: '10px',
+        fontWeight: 600,
         colors: [isDarkMode ? '#cbd5e1' : '#64748b']
       }
     },
     xaxis: {
       categories: salesData.monthlySalesAndBookings.map(m => m.month),
       labels: {
+        rotate: -35,
+        hideOverlappingLabels: true,
         style: {
+          fontSize: '11px',
           colors: isDarkMode ? '#cbd5e1' : '#64748b'
         }
       }
@@ -509,7 +551,7 @@ const SalesReport = () => {
           }
         },
         labels: {
-          formatter: (val) => `₱${(val / 1000).toFixed(0)}k`,
+          formatter: pesoShort,
           style: {
             colors: isDarkMode ? '#cbd5e1' : '#64748b'
           }
@@ -524,15 +566,23 @@ const SalesReport = () => {
           }
         },
         labels: {
+          formatter: (val) => Math.round(val),
           style: {
             colors: isDarkMode ? '#cbd5e1' : '#64748b'
           }
         }
       }
     ],
+    tooltip: {
+      theme: isDarkMode ? 'dark' : 'light',
+      shared: true,
+      intersect: false,
+      y: [{ formatter: pesoFull }, { formatter: (v) => `${v} bookings` }]
+    },
     colors: ['#10b981', '#2563eb'],
     legend: {
-      position: 'top'
+      position: 'top',
+      fontSize: '12px'
     }
   } : {};
 
@@ -574,9 +624,13 @@ const SalesReport = () => {
     },
     xaxis: {
       categories: trendCategories,
+      tickAmount: useDailyTrend ? Math.min(trendCategories.length, 10) : undefined,
       labels: {
-        rotate: useDailyTrend ? 0 : -45,
+        rotate: -35,
+        rotateAlways: useDailyTrend && trendCategories.length > 10,
+        hideOverlappingLabels: true,
         style: {
+          fontSize: '10px',
           colors: isDarkMode ? '#cbd5e1' : '#64748b'
         }
       }
@@ -590,7 +644,7 @@ const SalesReport = () => {
           }
         },
         labels: {
-          formatter: (val) => `₱${(val / 1000).toFixed(0)}k`,
+          formatter: pesoShort,
           style: {
             colors: isDarkMode ? '#cbd5e1' : '#64748b'
           }
@@ -605,15 +659,23 @@ const SalesReport = () => {
           }
         },
         labels: {
+          formatter: (val) => Math.round(val),
           style: {
             colors: isDarkMode ? '#cbd5e1' : '#64748b'
           }
         }
       }
     ],
+    tooltip: {
+      theme: isDarkMode ? 'dark' : 'light',
+      shared: true,
+      intersect: false,
+      y: [{ formatter: pesoFull }, { formatter: (v) => `${v} bookings` }]
+    },
     colors: ['#10b981', '#2563eb'],
     legend: {
-      position: 'top'
+      position: 'top',
+      fontSize: '12px'
     }
   } : {};
 
