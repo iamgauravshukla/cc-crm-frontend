@@ -474,7 +474,11 @@ export default function ChatQA() {
                 <label>Page
                   <select value={runPage} onChange={e => setRunPage(e.target.value)}>
                     {tokenPages.length === 0 && <option value="">No pages configured</option>}
-                    {tokenPages.map(p => <option key={p.pageId} value={p.pageId}>{pagePlatform(p)} · {p.label}</option>)}
+                    {pages.map(p => (
+                      <option key={p.pageId} value={p.pageId} disabled={!p.hasToken}>
+                        {pagePlatform(p)} · {p.label}{!p.hasToken ? ` — ${/subscription/i.test(p.tokenError || '') ? 'no Pancake subscription' : /administer|permission/i.test(p.tokenError || '') ? 'needs admin access on Pancake' : 'no API access'}` : ''}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label>Agent
