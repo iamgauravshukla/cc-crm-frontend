@@ -42,6 +42,7 @@ const ACI_COMPONENTS = [
   ['discipline', 'Discipline', v => v != null ? `${v}% lost` : '—'],
 ];
 const critClass  = (v) => v == null ? 'na' : v >= 8 ? 'great' : v >= 6 ? 'ok' : v >= 4 ? 'weak' : 'bad';
+const pagePlatform = (p) => p.platform === 'instagram_official' ? '📷 IG' : '📘 FB';
 const SCORE_COLORS = { great: '#10b981', ok: '#3b82f6', weak: '#f59e0b', bad: '#ef4444' };
 
 export default function ChatQA() {
@@ -473,7 +474,7 @@ export default function ChatQA() {
                 <label>Page
                   <select value={runPage} onChange={e => setRunPage(e.target.value)}>
                     {tokenPages.length === 0 && <option value="">No pages configured</option>}
-                    {tokenPages.map(p => <option key={p.pageId} value={p.pageId}>{p.label} ({p.platform === 'instagram_official' ? 'IG' : 'FB'})</option>)}
+                    {tokenPages.map(p => <option key={p.pageId} value={p.pageId}>{pagePlatform(p)} · {p.label}</option>)}
                   </select>
                 </label>
                 <label>Agent
@@ -552,7 +553,7 @@ export default function ChatQA() {
           <div className="cqa-filters">
             <select value={fPage} onChange={e => setFPage(e.target.value)}>
               <option value="">All pages</option>
-              {pages.map(p => <option key={p.pageId} value={p.pageId}>{p.label}</option>)}
+              {pages.map(p => <option key={p.pageId} value={p.pageId}>{pagePlatform(p)} · {p.label}</option>)}
             </select>
             <input placeholder="Agent name…" value={fAgent} onChange={e => setFAgent(e.target.value)} />
             <input type="date" value={fFrom} max={phDate(0)} onChange={e => setFFrom(e.target.value)} />
