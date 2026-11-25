@@ -301,3 +301,14 @@
   .cqa-lb-row { grid-template-columns: 28px 30px 1fr 86px; }
   .cqa-lb-comps { display: none; }
 }
+
+/* View-report button on the finished-run banner */
+.cqa-viewreport {
+  display: inline-flex; align-items: center; gap: 4px; margin-left: auto;
+  background: var(--primary-color, #0073ea); color: #fff; border: none;
+  border-radius: 7px; padding: 6px 13px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.cqa-viewreport:hover { opacity: .9; }
+/* Metrics with tooltips hint at it */
+.cqa-kpi[title] { cursor: help; }
+.cqa-sc-table tr[title] td:first-child { cursor: help; }

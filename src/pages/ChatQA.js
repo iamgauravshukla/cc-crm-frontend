@@ -284,7 +284,7 @@ export default function ChatQA() {
 
   // Open one run's report (its scored chats only); back returns to the dashboard
   const openRun = (run) => {
-    if (run.status === 'Running' || !run.convsAnalyzed) return;
+    if (run.status === 'Running' || (run.convsAnalyzed + (run.convsReused || 0)) === 0) return;
     setShowRunPanel(false);
     setViewRun(run);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -508,7 +508,13 @@ export default function ChatQA() {
                 <>
                   <span className="cqa-spinner dark" />
                   <strong>{activeRun.name || `Run #${activeRun.id}`}</strong>
-                  <span>{activeRun.convsAnalyzed || 0} / {activeRun.sampleSize} chats{activeRun.convsFound ? ` · ${activeRun.convsFound} found in range` : ''}</span>
+                  <span>
+                    {!activeRun.convsFound
+                      ? 'Step 1 of 3 — scanning Pancake for conversations in the date range…'
+                      : (activeRun.convsAnalyzed || 0) < (activeRun.sampleSize || 0)
+                        ? `Step 2 of 3 — scoring real conversations: ${activeRun.convsAnalyzed || 0} / ${activeRun.sampleSize} scored${activeRun.convsReused ? ` · ${activeRun.convsReused} reused free` : ''}${activeRun.convsSkipped ? ` · ${activeRun.convsSkipped} without a real exchange skipped` : ''}`
+                        : 'Step 3 of 3 — finishing: updating per-agent learning…'}
+                  </span>
                   <span className="cqa-bar"><span style={{ width: `${Math.min(100, ((activeRun.convsAnalyzed || 0) / (activeRun.sampleSize || 1)) * 100)}%` }} /></span>
                   <span className="cqa-muted">runs on the server — safe to close this page</span>
                 </>
@@ -516,6 +522,11 @@ export default function ChatQA() {
                 <>
                   <strong>{activeRun.name || `Run #${activeRun.id}`}</strong>
                   <span>finished — {activeRun.convsAnalyzed} analyzed{activeRun.convsReused ? `, ${activeRun.convsReused} reused (no GPT cost)` : ''}, {activeRun.convsSkipped || 0} skipped, {activeRun.convsFailed || 0} failed</span>
+                  {(activeRun.convsAnalyzed + (activeRun.convsReused || 0)) > 0 && (
+                    <button className="cqa-viewreport" onClick={() => { const r = activeRun; dismissRun(r); openRun(r); }}>
+                      View report <FiChevronRight size={13} />
+                    </button>
+                  )}
                   <button className="cqa-dismiss" onClick={() => dismissRun(activeRun)}><FiX size={13} /></button>
                 </>
               ) : (
@@ -574,11 +585,11 @@ export default function ChatQA() {
           <>
           {/* ── KPIs ── */}
           <div className="cqa-kpis">
-            <div className="cqa-kpi"><b>{stats?.analyzed ?? '—'}</b><span>Chats analyzed</span></div>
-            <div className={`cqa-kpi score-${scoreClass(stats?.avgScore)}`}><b>{stats?.avgScore ?? '—'}</b><span>Avg score / 100</span></div>
-            <div className="cqa-kpi flag"><b>{stats?.flagged ?? '—'}</b><span>Red-flagged</span></div>
-            <div className="cqa-kpi"><b>{fmtSec(stats?.medianFirstResponseSec)}</b><span>Median first response</span></div>
-            <div className="cqa-kpi"><b>{stats?.bookingPushRate != null ? `${stats.bookingPushRate}%` : '—'}</b><span>Strong booking push</span></div>
+            <div className="cqa-kpi" title="GPT-scored conversations that match the current filters"><b>{stats?.analyzed ?? '—'}</b><span>Chats analyzed</span></div>
+            <div className={`cqa-kpi score-${scoreClass(stats?.avgScore)}`} title="Average GPT quality score (0–100) across the scored chats"><b>{stats?.avgScore ?? '—'}</b><span>Avg score / 100</span></div>
+            <div className="cqa-kpi flag" title="Chats where GPT found at least one red flag (rude tone, wrong info, personal number, customer ignored…)"><b>{stats?.flagged ?? '—'}</b><span>Red-flagged</span></div>
+            <div className="cqa-kpi" title="Median time from a customer's first message to the first HUMAN agent reply, inside the analyzed period. Auto-replies don't count. Half the chats were answered faster than this, half slower."><b>{fmtSec(stats?.medianFirstResponseSec)}</b><span>Median first response</span></div>
+            <div className="cqa-kpi" title="Share of scored chats where the agent pushed firmly for a booking (closing score ≥ 7/10)"><b>{stats?.bookingPushRate != null ? `${stats.bookingPushRate}%` : '—'}</b><span>Strong booking push</span></div>
           </div>
 
           {loading ? <Loader message="Loading QA data…" /> : (stats?.analyzed || 0) === 0 ? (
@@ -622,8 +633,13 @@ export default function ChatQA() {
                     <table className="bookings-table cqa-table">
                       <thead>
                         <tr>
-                          <th>Agent</th><th>Chats assigned</th><th>Per day</th>
-                          <th>Responded</th><th>Response rate</th><th>Messages sent</th><th>Avg response</th>
+                          <th>Agent</th>
+                          <th title="Conversations assigned to this agent on Pancake during the period (a chat with two assignees counts for both)">Chats assigned</th>
+                          <th title="Assigned conversations ÷ days in the period">Per day</th>
+                          <th title="Unique conversations the agent actually replied in (Pancake statistics)">Responded</th>
+                          <th title="Responded ÷ assigned — how much of their workload the agent actually answered">Response rate</th>
+                          <th title="Messages the agent sent in the period (inbox + comments, Pancake statistics)">Messages sent</th>
+                          <th title="Average time the agent takes to reply, from Pancake statistics — weighted across the whole period">Avg response</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -661,7 +677,7 @@ export default function ChatQA() {
                         <span className="cqa-avatar"><FiUser size={15} /></span>
                         <div className="cqa-agentcard-name">
                           <strong>{a.agentName}</strong>
-                          <span>{a.convs} chat{a.convs !== 1 ? 's' : ''} · 1st resp {fmtSec(a.avgFirstResponseSec)}</span>
+                          <span title="Scored chats in this view · average time from the customer's first message to the first human reply">{a.convs} chat{a.convs !== 1 ? 's' : ''} · 1st resp {fmtSec(a.avgFirstResponseSec)}</span>
                         </div>
                         <span className={`cqa-pill big score-${scoreClass(a.avgScore)}`}>{a.avgScore}</span>
                       </div>
@@ -953,18 +969,27 @@ export default function ChatQA() {
                         {scorecard.metrics && (() => {
                           const m = scorecard.metrics;
                           const rows = [
-                            ['Bookings created', m.bookingsCreated, scStatus('bookingsCreated', m.bookingsCreated)],
-                            ['Appointments in period', m.appointments, ['—', 'na']],
-                            ['Arrived', m.arrived, ['—', 'na']],
-                            ['Arrival / show rate', m.showRate != null ? `${m.showRate}%` : '—', scStatus('showRate', m.showRate)],
-                            ['No-show rate', m.noShowRate != null ? `${m.noShowRate}%` : '—', scStatus('noShowRate', m.noShowRate)],
-                            ['Cancellation rate', m.cancelRate != null ? `${m.cancelRate}%` : '—', scStatus('cancelRate', m.cancelRate)],
-                            ['Conversion (bought / arrived)', m.conversionRate != null ? `${m.conversionRate}%` : '—', scStatus('conversionRate', m.conversionRate)],
-                            ['Revenue (₱)', `₱${(m.revenue || 0).toLocaleString()}`, ['—', 'na']],
-                            ['Revenue / arrival (₱)', m.revenuePerArrival != null ? `₱${m.revenuePerArrival.toLocaleString()}` : '—', ['—', 'na']],
+                            ['Bookings created', m.bookingsCreated, scStatus('bookingsCreated', m.bookingsCreated),
+                              'Bookings whose "Booked on" date falls inside the period, credited to this agent'],
+                            ['Appointments in period', m.appointments, ['—', 'na'],
+                              'Bookings whose appointment date falls inside the period'],
+                            ['Arrived', m.arrived, ['—', 'na'],
+                              'Arrived & bought + Arrived not potential (approved, not cancel-validated) — same rule as Daily Reports'],
+                            ['Arrival / show rate', m.showRate != null ? `${m.showRate}%` : '—', scStatus('showRate', m.showRate),
+                              'Arrived ÷ appointments in the period'],
+                            ['No-show rate', m.noShowRate != null ? `${m.noShowRate}%` : '—', scStatus('noShowRate', m.noShowRate),
+                              'No Show ÷ appointments in the period'],
+                            ['Cancellation rate', m.cancelRate != null ? `${m.cancelRate}%` : '—', scStatus('cancelRate', m.cancelRate),
+                              'Cancelled ÷ appointments in the period'],
+                            ['Conversion (bought / arrived)', m.conversionRate != null ? `${m.conversionRate}%` : '—', scStatus('conversionRate', m.conversionRate),
+                              'Arrived & bought + Comeback & bought ÷ arrived'],
+                            ['Revenue (₱)', `₱${(m.revenue || 0).toLocaleString()}`, ['—', 'na'],
+                              'Total price of Arrived & bought + Comeback & bought + Arrived not potential, by appointment date — the exact same formula as the Sales Report page'],
+                            ['Revenue / arrival (₱)', m.revenuePerArrival != null ? `₱${m.revenuePerArrival.toLocaleString()}` : '—', ['—', 'na'],
+                              'Revenue ÷ arrived customers'],
                           ];
-                          return rows.map(([label, value, [stLabel, stCls]]) => (
-                            <tr key={label}>
+                          return rows.map(([label, value, [stLabel, stCls], tip]) => (
+                            <tr key={label} title={tip}>
                               <td>{label}</td>
                               <td><b>{value}</b></td>
                               <td><span className={`cqa-pill score-${stCls}`}>{stLabel}</span></td>
@@ -980,7 +1005,7 @@ export default function ChatQA() {
                     </table>
                   </div>
                   <p className="cqa-muted" style={{ fontSize: '0.76rem', marginTop: 10 }}>
-                    Booking metrics come from Master Bookings for the matched CRM agent; Chat QA comes from the GPT-scored Pancake chats. Dials and attendance stay in your sheet for now.
+                    Booking metrics come from Master Bookings for the matched CRM agent — revenue uses the exact Sales Report formula, so for the same dates and agent the numbers match peso-for-peso. Chat QA comes from the GPT-scored Pancake chats. Hover any row for its formula. Dials and attendance stay in your sheet for now.
                   </p>
                 </div>
               )
