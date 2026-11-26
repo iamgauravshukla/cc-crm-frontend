@@ -49,6 +49,7 @@ function Sidebar() {
     { path: '/kanban',       label: 'Kanban Board',    icon: FiColumns, roles: ['Admin', 'Agent'] },
     { path: '/session-tracker', label: 'Session Tracker', icon: FiRepeat, roles: ['Admin', 'Agent'] },
     { path: '/chat-qa', label: 'Chat QA', icon: FiMessageCircle, roles: ['Admin'] },
+    { path: '/my-qa', label: 'My QA', icon: FiMessageCircle, roles: ['Agent'] },
     { path: '/analytics', label: 'Analytics', icon: FiBarChart2, roles: ['Admin'] },
     { path: '/daily-reports', label: 'Daily Reports', icon: FiClipboard, roles: ['Admin'] },
     { path: '/cc-booking-report', label: 'CC Booking Report', icon: FiBarChart2, roles: ['Admin'] },

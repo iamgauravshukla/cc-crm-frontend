@@ -124,6 +124,8 @@ export const getQaRatings       = (params)   => api.get('/qa/ratings', { params 
 export const getQaAgentMap      = ()         => api.get('/qa/agent-map');
 export const saveQaAgentMap     = (data)     => api.put('/qa/agent-map', data);
 export const getAciWeights      = ()         => api.get('/qa/settings/aci-weights');
+export const getMyQaOverview    = (params)   => api.get('/qa/my/overview', { params });
+export const getMyQaConversation = (id)      => api.get(`/qa/my/conversations/${id}`);
 export const saveAciWeights     = (weights)  => api.put('/qa/settings/aci-weights', { weights });
 
 // Config (dropdown options) APIs

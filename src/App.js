@@ -18,6 +18,7 @@ import WebsiteLeads from './pages/WebsiteLeads';
 import KanbanBoard from './pages/KanbanBoard';
 import SessionTracker from './pages/SessionTracker';
 import ChatQA from './pages/ChatQA';
+import MyQA from './pages/MyQA';
 import ImportData from './pages/ImportData';
 import LeadsTest from './pages/LeadsTest';
 import './App.css';
@@ -98,6 +99,11 @@ function App() {
           <Route path="/chat-qa" element={
             <PrivateRoute>
               <ChatQA />
+            </PrivateRoute>
+          } />
+          <Route path="/my-qa" element={
+            <PrivateRoute>
+              <MyQA />
             </PrivateRoute>
           } />
           <Route path="/analytics" element={

@@ -31,6 +31,9 @@ const EMPTY_FORM = {
   firstName: '', lastName: '', phone: '', email: '', branch: '', treatment: '',
   totalSessions: 6, gapDays: 14, priceTotal: '', startDate: phToday(), startTime: '', notes: '', sourceBookingId: '',
 };
+// One row per treatment the customer bought — each becomes its own package
+// with its own session count, gap and reminders (e.g. 5 HIFU + 10 RF + 10 Exilis).
+const EMPTY_TROW = () => ({ treatment: '', totalSessions: 6, gapDays: 14, startDate: phToday(), startTime: '', priceTotal: '' });
 
 export default function SessionTracker() {
   const { options: cfg } = useConfig();
@@ -63,6 +66,7 @@ export default function SessionTracker() {
   // Create modal
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [tRows, setTRows] = useState([EMPTY_TROW()]);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
 
@@ -112,6 +116,8 @@ export default function SessionTracker() {
           startDate: b.date && b.date >= phToday() ? b.date : phToday(),
           startTime: '',
         }));
+        setTRows([{ ...EMPTY_TROW(), treatment: b.treatment || '', priceTotal: b.totalPrice || '',
+          startDate: b.date && b.date >= phToday() ? b.date : phToday() }]);
         setShowCreate(true);
       } catch { /* booking not found — open blank form */ setShowCreate(true); }
       setSearchParams({}, { replace: true });
@@ -165,25 +171,45 @@ export default function SessionTracker() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    const rows = tRows.filter(r => r.treatment || r.totalSessions || r.priceTotal);
+    if (!rows.length || rows.some(r => !r.treatment || !r.totalSessions || !r.gapDays || !r.startDate)) {
+      setCreateError('Every treatment row needs a treatment, sessions, gap and first date.');
+      return;
+    }
     setCreating(true); setCreateError('');
+    let created = 0;
     try {
-      const payload = {
-        ...form,
-        totalSessions: Number(form.totalSessions),
-        gapDays: Number(form.gapDays),
-        priceTotal: form.priceTotal === '' ? null : Number(form.priceTotal),
-        sourceBookingId: form.sourceBookingId || null,
-      };
-      await createPackage(payload);
+      // One package per treatment — each keeps its own session numbers, gap
+      // and reminder schedule; they stay linked by the customer's phone.
+      for (const r of rows) {
+        await createPackage({
+          firstName: form.firstName, lastName: form.lastName, phone: form.phone,
+          email: form.email, branch: form.branch, notes: form.notes,
+          sourceBookingId: form.sourceBookingId || null,
+          treatment: r.treatment,
+          totalSessions: Number(r.totalSessions),
+          gapDays: Number(r.gapDays),
+          startDate: r.startDate,
+          startTime: r.startTime,
+          priceTotal: r.priceTotal === '' ? null : Number(r.priceTotal),
+        });
+        created++;
+      }
       setShowCreate(false);
       setForm(EMPTY_FORM);
+      setTRows([EMPTY_TROW()]);
       setPhoneHint([]);
-      showToast('Package created — sessions scheduled');
+      showToast(created === 1 ? 'Package created — sessions scheduled' : `${created} treatment packages created — sessions scheduled`);
       fetchAll();
     } catch (err) {
-      setCreateError(err.response?.data?.error || 'Failed to create package');
+      setCreateError((created > 0 ? `Created ${created} of ${rows.length} — then failed: ` : '') + (err.response?.data?.error || 'Failed to create package'));
+      if (created > 0) fetchAll();
     } finally { setCreating(false); }
   };
+
+  const setRow = (i, patch) => setTRows(rows => rows.map((r, idx) => idx === i ? { ...r, ...patch } : r));
+  const addRow = () => setTRows(rows => [...rows, { ...EMPTY_TROW(), startDate: rows[rows.length - 1]?.startDate || phToday() }]);
+  const removeRow = (i) => setTRows(rows => rows.length > 1 ? rows.filter((_, idx) => idx !== i) : rows);
 
   const fChange = (e) => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -236,7 +262,7 @@ export default function SessionTracker() {
               <button className="refresh-btn" onClick={fetchAll} disabled={loading}>
                 <FiRefreshCw size={14} className={loading ? 'spin' : ''} /> Refresh
               </button>
-              <button className="st-new-btn" onClick={() => { setForm(EMPTY_FORM); setCreateError(''); setShowCreate(true); }}>
+              <button className="st-new-btn" onClick={() => { setForm(EMPTY_FORM); setTRows([EMPTY_TROW()]); setCreateError(''); setShowCreate(true); }}>
                 <FiPlus size={15} /> New package
               </button>
             </div>
@@ -465,25 +491,39 @@ export default function SessionTracker() {
                     {cfg.branches.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
                 </label>
-                <label>Treatment *
-                  <select name="treatment" value={form.treatment} onChange={fChange} required>
-                    <option value="">Select…</option>
-                    {cfg.treatments.map(t => <option key={t} value={t}>{t}</option>)}
-                    {form.treatment && !cfg.treatments.includes(form.treatment) && <option value={form.treatment}>{form.treatment}</option>}
-                  </select>
-                </label>
-                <label>Total sessions *<input name="totalSessions" type="number" min="1" max="100" value={form.totalSessions} onChange={fChange} onWheel={e => e.currentTarget.blur()} required /></label>
-                <label>Gap between sessions (days) *<input name="gapDays" type="number" min="1" max="365" value={form.gapDays} onChange={fChange} onWheel={e => e.currentTarget.blur()} required /></label>
-                <label>First session date *<input name="startDate" type="date" value={form.startDate} onChange={fChange} required /></label>
-                <label>First session time<input name="startTime" value={form.startTime} onChange={fChange} placeholder="e.g. 2:00 PM" /></label>
-                <label>Package price (₱)<input name="priceTotal" type="number" min="0" step="any" value={form.priceTotal} onChange={fChange} onWheel={e => e.currentTarget.blur()} /></label>
+              </div>
+
+              {/* One row per treatment bought — each becomes its own tracked package */}
+              <div className="st-trows">
+                <div className="st-trows-head">
+                  <h4>Treatments <span className="st-muted">each keeps its own sessions, gap and reminders</span></h4>
+                  <button type="button" className="st-btn-ghost st-addrow" onClick={addRow}>+ Add treatment</button>
+                </div>
+                {tRows.map((r, i) => (
+                  <div className="st-trow" key={i}>
+                    <label>Treatment *
+                      <select value={r.treatment} onChange={e => setRow(i, { treatment: e.target.value })} required>
+                        <option value="">Select…</option>
+                        {cfg.treatments.map(t => <option key={t} value={t}>{t}</option>)}
+                        {r.treatment && !cfg.treatments.includes(r.treatment) && <option value={r.treatment}>{r.treatment}</option>}
+                      </select>
+                    </label>
+                    <label>Sessions *<input type="number" min="1" max="100" value={r.totalSessions} onChange={e => setRow(i, { totalSessions: e.target.value })} onWheel={e => e.currentTarget.blur()} required /></label>
+                    <label title="Days between this treatment's sessions — every treatment can have a different rhythm">Gap (days) *<input type="number" min="1" max="365" value={r.gapDays} onChange={e => setRow(i, { gapDays: e.target.value })} onWheel={e => e.currentTarget.blur()} required /></label>
+                    <label>First date *<input type="date" value={r.startDate} onChange={e => setRow(i, { startDate: e.target.value })} required /></label>
+                    <label>Time<input value={r.startTime} onChange={e => setRow(i, { startTime: e.target.value })} placeholder="2:00 PM" /></label>
+                    <label>Price (₱)<input type="number" min="0" step="any" value={r.priceTotal} onChange={e => setRow(i, { priceTotal: e.target.value })} onWheel={e => e.currentTarget.blur()} /></label>
+                    <button type="button" className="st-rowdel" title="Remove this treatment" onClick={() => removeRow(i)} disabled={tRows.length === 1}><FiX size={14} /></button>
+                  </div>
+                ))}
               </div>
               <label className="st-full">Notes<textarea name="notes" rows={2} value={form.notes} onChange={fChange} /></label>
               {createError && <div className="lead-modal-error">{createError}</div>}
               <div className="st-modal-foot">
                 <button type="button" className="st-btn-ghost" onClick={() => setShowCreate(false)} disabled={creating}>Cancel</button>
                 <button type="submit" className="st-new-btn" disabled={creating}>
-                  {creating ? 'Creating…' : `Create package (${form.totalSessions || 0} sessions)`}
+                  {creating ? 'Creating…'
+                    : `Create ${tRows.length} package${tRows.length !== 1 ? 's' : ''} (${tRows.reduce((n, r) => n + (Number(r.totalSessions) || 0), 0)} sessions)`}
                 </button>
               </div>
             </form>
